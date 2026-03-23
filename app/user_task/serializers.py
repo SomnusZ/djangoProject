@@ -6,6 +6,7 @@
 from rest_framework import serializers
 
 from app.user.models import User
+from app.pet_model.models import PetModel as BasePetModel
 from .models import PetModel
 
 
@@ -15,12 +16,14 @@ class PetModelSerializer(serializers.ModelSerializer):
     """
 
     user_id = serializers.IntegerField(source='user.user_id', read_only=True)
+    pet_model_id = serializers.IntegerField(source='pet_model.pet_model_id', read_only=True)
 
     class Meta:
         model = PetModel
         fields = (
-            'pet_model_id',
+            'user_task_id',
             'user_id',
+            'pet_model_id',
             'model_name',
             'model_address',
         )
@@ -32,11 +35,13 @@ class CreatePetModelSerializer(serializers.ModelSerializer):
     """
 
     user_id = serializers.IntegerField(write_only=True)
+    pet_model_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = PetModel
         fields = (
             'user_id',
+            'pet_model_id',
             'model_name',
             'model_address',
         )
@@ -46,10 +51,17 @@ class CreatePetModelSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('用户不存在')
         return value
 
+    def validate_pet_model_id(self, value):
+        if not BasePetModel.objects.filter(pet_model_id=value).exists():
+            raise serializers.ValidationError('宠物模型不存在')
+        return value
+
     def create(self, validated_data):
         user_id = validated_data.pop('user_id')
+        pet_model_id = validated_data.pop('pet_model_id')
         user = User.objects.get(user_id=user_id)
-        return PetModel.objects.create(user=user, **validated_data)
+        pet_model = BasePetModel.objects.get(pet_model_id=pet_model_id)
+        return PetModel.objects.create(user=user, pet_model=pet_model, **validated_data)
 
 
 class UpdatePetModelSerializer(serializers.ModelSerializer):
@@ -68,10 +80,10 @@ class UpdatePetModelSerializer(serializers.ModelSerializer):
 class DirModelQuerySerializer(serializers.Serializer):
     """
     查询模型信息序列化器。
-    支持 pet_model_id 查询。
+    支持 user_task_id 查询。
     """
 
-    pet_model_id = serializers.IntegerField(required=True)
+    user_task_id = serializers.IntegerField(required=True)
 
 
 class DirModelListByUserSerializer(serializers.Serializer):

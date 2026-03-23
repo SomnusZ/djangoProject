@@ -9,7 +9,7 @@ from .views import PetModelViewSet
 
 router = DefaultRouter()
 # 注册模型路由，最终路径为 /api/models/
-router.register(r'', PetModelViewSet, basename='pet_user_model')
+router.register(r'', PetModelViewSet, basename='user_task')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -17,7 +17,9 @@ urlpatterns = [
     # 用户接口
     path('api/users/', include('app.user.urls')),
     # 模型接口
-    path('api/models/', include('app.pet_user_model.urls')),
+    path('api/models/', include('app.user_task.urls')),
+    # 宠物模型接口
+    path('api/pet-models/', include('app.pet_model.urls')),
     # 动作接口
     path('api/actions/', include('app.pet_action.urls')),
 ]

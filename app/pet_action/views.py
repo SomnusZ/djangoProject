@@ -7,7 +7,7 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
 from app.utils import success_response, error_response
-from app.pet_user_model.models import PetModel
+from app.user_task.models import PetModel
 
 from .models import PetAction
 from .serializers import (
@@ -32,7 +32,7 @@ class PetActionViewSet(viewsets.GenericViewSet):
         动作新增接口。
         请求体示例：
         {
-            "pet_model_id": 1,
+            "user_task_id": 1,
             "pet_action_name": "sit"
         }
         """
@@ -65,14 +65,14 @@ class PetActionViewSet(viewsets.GenericViewSet):
         """
         根据模型查询动作列表接口。
         查询参数示例：
-        /api/actions/dirActionListByPetModel/?pet_model_id=1
+        /api/actions/dirActionListByPetModel/?user_task_id=1
         """
         serializer = DirActionListByPetModelSerializer(data=request.query_params)
         if not serializer.is_valid():
             return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
-        pet_model_id = serializer.validated_data['pet_model_id']
-        pet_model = PetModel.objects.filter(pet_model_id=pet_model_id).first()
+        user_task_id = serializer.validated_data['user_task_id']
+        pet_model = PetModel.objects.filter(user_task_id=user_task_id).first()
         if not pet_model:
             return error_response('模型不存在', status_code=status.HTTP_404_NOT_FOUND)
 

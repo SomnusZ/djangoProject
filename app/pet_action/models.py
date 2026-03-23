@@ -5,7 +5,7 @@
 
 from django.db import models
 
-from app.pet_user_model.models import PetModel
+from app.user_task.models import PetModel
 
 
 class PetAction(models.Model):
@@ -14,8 +14,8 @@ class PetAction(models.Model):
     # 关联模型（多对一）
     pet_model = models.ForeignKey(
         PetModel,
-        to_field='pet_model_id',
-        db_column='pet_model_id',
+        to_field='user_task_id',
+        db_column='user_task_id',
         on_delete=models.CASCADE,
         related_name='pet_actions',
         verbose_name='模型',

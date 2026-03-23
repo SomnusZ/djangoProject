@@ -35,6 +35,7 @@ class PetModelViewSet(viewsets.GenericViewSet):
         请求体示例：
         {
             "user_id": 1,
+            "pet_model_id": 1,
             "model_name": "cat-v1",
             "model_address": "/models/cat-v1.bin"
         }
@@ -52,20 +53,21 @@ class PetModelViewSet(viewsets.GenericViewSet):
         仅允许修改 model_name。
         请求体示例：
         {
-            "pet_model_id": 1,
+            "user_task_id": 1,
             "model_name": "cat-v2"
         }
         """
-        pet_model_id = request.data.get('pet_model_id')
-        if not pet_model_id:
-            return error_response('请提供 pet_model_id', status_code=status.HTTP_400_BAD_REQUEST)
+        user_task_id = request.data.get('user_task_id')
+        if not user_task_id:
+            return error_response('请提供 user_task_id', status_code=status.HTTP_400_BAD_REQUEST)
 
-        model_obj = PetModel.objects.filter(pet_model_id=pet_model_id).first()
+        model_obj = PetModel.objects.filter(user_task_id=user_task_id).first()
         if not model_obj:
             return error_response('模型不存在', status_code=status.HTTP_404_NOT_FOUND)
 
         # 移除仅用于定位的字段，避免序列化器报错
         update_data = request.data.copy()
+        update_data.pop('user_task_id', None)
         update_data.pop('pet_model_id', None)
 
         serializer = UpdatePetModelSerializer(model_obj, data=update_data, partial=True)
@@ -80,14 +82,14 @@ class PetModelViewSet(viewsets.GenericViewSet):
         """
         模型信息查询接口。
         查询参数示例：
-        /api/models/dirModel/?pet_model_id=1
+        /api/models/dirModel/?user_task_id=1
         """
         serializer = DirModelQuerySerializer(data=request.query_params)
         if not serializer.is_valid():
             return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
-        pet_model_id = serializer.validated_data['pet_model_id']
-        model_obj = PetModel.objects.filter(pet_model_id=pet_model_id).first()
+        user_task_id = serializer.validated_data['user_task_id']
+        model_obj = PetModel.objects.filter(user_task_id=user_task_id).first()
         if not model_obj:
             return error_response('模型不存在', status_code=status.HTTP_404_NOT_FOUND)
 
@@ -113,6 +115,6 @@ class PetModelViewSet(viewsets.GenericViewSet):
         if not user:
             return error_response('用户不存在', status_code=status.HTTP_404_NOT_FOUND)
 
-        models_qs = PetModel.objects.filter(user=user).order_by('-pet_model_id')
+        models_qs = PetModel.objects.filter(user=user).order_by('-user_task_id')
         data = PetModelSerializer(models_qs, many=True).data
         return success_response(data, message='查询成功')

@@ -30,7 +30,9 @@ INSTALLED_APPS = [
     # 用户应用
     'app.user.apps.UsersConfig',
     # 模型应用
-    'app.pet_user_model.apps.PetUserModelConfig',
+    'app.user_task.apps.UserTaskConfig',
+    # 宠物模型应用
+    'app.pet_model.apps.PetModelConfig',
     # 动作应用
     'app.pet_action.apps.PetActionConfig',
 ]
