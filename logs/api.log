@@ -1,0 +1,3 @@
+[2026-03-30 00:26:27,688] INFO api GET /test/user_create/ status=200 user_id=None time=7.26ms
+[2026-03-30 00:26:27,824] INFO api GET /favicon.ico status=404 user_id=None time=16.47ms
+[2026-03-30 00:27:09,675] INFO api POST /api/users/creatUser/ status=201 user_id=None time=384.78ms

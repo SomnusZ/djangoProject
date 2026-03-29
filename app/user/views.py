@@ -1,12 +1,14 @@
 ﻿"""
 视图文件。
-包含用户相关接口：dirUser、updateUser、creatUser。
+包含用户相关接口：dirUser、updateUser、createUser。
 """
 
 from django.contrib.auth.hashers import check_password
 from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import User
 from .serializers import (
@@ -27,7 +29,8 @@ class UserViewSet(viewsets.GenericViewSet):
 
     queryset = User.objects.all()
 
-    @action(detail=False, methods=['post'], url_path='creatUser')
+    # 注册接口允许匿名访问
+    @action(detail=False, methods=['post'], url_path='createUser', permission_classes=[AllowAny])
     def creat_user(self, request):
         """
         用户注册/新增接口。
@@ -78,7 +81,8 @@ class UserViewSet(viewsets.GenericViewSet):
         serializer.save()
         return success_response(UserSerializer(user).data, message='修改成功')
 
-    @action(detail=False, methods=['post'], url_path='dirUser')
+    # 登录接口允许匿名访问
+    @action(detail=False, methods=['post'], url_path='dirUser', permission_classes=[AllowAny])
     def dir_user_login(self, request):
         """
         用户登录接口。
@@ -102,7 +106,20 @@ class UserViewSet(viewsets.GenericViewSet):
         if not check_password(user_password, user.user_password):
             return error_response('密码错误', status_code=status.HTTP_400_BAD_REQUEST)
 
-        return success_response(UserSerializer(user).data, message='登录成功')
+        # 生成 JWT（access / refresh）
+        refresh = RefreshToken.for_user(user)
+        token_data = {
+            'access_token': str(refresh.access_token),
+            'refresh_token': str(refresh),
+        }
+
+        # 返回用户信息 + Token
+        data = {
+            'user': UserSerializer(user).data,
+            'token': token_data,
+        }
+
+        return success_response(data, message='登录成功')
 
     @action(detail=False, methods=['get'], url_path='dirUser')
     def dir_user_info(self, request):
@@ -127,11 +144,4 @@ class UserViewSet(viewsets.GenericViewSet):
         return success_response(UserSerializer(user).data, message='查询成功')
 
 
-def register_page(request):
-    """
-    简单注册页视图。
-    仅用于前端联调测试。
-    """
-    from django.shortcuts import render
-
-    return render(request, 'register.html')
+# 测试页面已改为TemplateView

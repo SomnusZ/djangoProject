@@ -240,7 +240,7 @@
           <button type="submit">立即注册</button>
           <button type="button" class="ghost" id="fillDemo">一键填充示例</button>
         </div>
-        <div class="tip">接口地址：/api/users/creatUser/</div>
+        <div class="tip">接口地址：/api/users/createUser/</div>
       </form>
 
       <div class="status" id="result">等待提交...</div>
@@ -266,7 +266,7 @@
 
       resultEl.textContent = '请求中...';
       try {
-        const res = await fetch('/api/users/creatUser/', {
+        const res = await fetch('/api/users/createUser/', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)

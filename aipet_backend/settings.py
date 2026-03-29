@@ -4,6 +4,7 @@ Django settings for aipet_backend.
 """
 
 from pathlib import Path
+from datetime import timedelta
 
 # 构建项目基础路径
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -46,6 +47,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'app.log_middleware.RequestLogMiddleware',
 ]
 
 # 路由入口
@@ -109,11 +111,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # DRF 配置
 REST_FRAMEWORK = {
-    # 关闭默认 SessionAuthentication 的 CSRF 校验，方便前端联调
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
-    # 允许匿名访问
+    # 启用 JWT 认证
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    # 强制登录：所有接口访问必须要求登录并携带有效 Token
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
+        'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
@@ -122,4 +126,48 @@ REST_FRAMEWORK = {
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.MultiPartParser',
     ],
+}
+
+# JWT 配置
+SIMPLE_JWT = {
+    # 访问令牌有效期
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    # 刷新令牌有效期
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # 是否轮换刷新令牌
+    'ROTATE_REFRESH_TOKENS': False,
+    # 刷新后是否将旧令牌加入黑名单（如需可开启并添加黑名单应用）
+    'BLACKLIST_AFTER_ROTATION': False,
+}
+
+# 日志配置（输出到文件 logs/api.log）
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'standard': {
+            'format': '[%(asctime)s] %(levelname)s %(name)s %(message)s',
+        },
+    },
+    'handlers': {
+        'api_file': {
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'logs' / 'api.log',
+            'formatter': 'standard',
+            'encoding': 'utf-8',
+        },
+        # 控制台日志输出（开发调试）
+        'api_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'standard',
+        },
+    },
+    'loggers': {
+        'api': {
+            # 同时输出到文件与控制台
+            'handlers': ['api_file', 'api_console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
 }

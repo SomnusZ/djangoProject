@@ -1,0 +1,76 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User 修改测试</title>
+  <style>
+    body { font-family: "Microsoft YaHei", Arial, sans-serif; padding: 24px; }
+    form { max-width: 560px; display: grid; gap: 12px; }
+    label { display: grid; gap: 6px; font-size: 14px; }
+    input { padding: 8px 10px; font-size: 14px; }
+    button { padding: 10px 12px; font-size: 14px; cursor: pointer; }
+    pre { background: #f6f8fa; padding: 12px; white-space: pre-wrap; }
+    .row { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
+  </style>
+</head>
+<body>
+  <h1>用户信息修改测试</h1>
+  <p>接口：PUT /api/users/updateUser/</p>
+
+  <form id="form">
+    <div class="row">
+      <label>
+        user_id
+        <input type="number" name="user_id" />
+      </label>
+      <label>
+        user_mail_address
+        <input type="email" name="user_mail_address" />
+      </label>
+    </div>
+    <div class="row">
+      <label>
+        user_name
+        <input type="text" name="user_name" />
+      </label>
+      <label>
+        user_phone_number
+        <input type="text" name="user_phone_number" />
+      </label>
+    </div>
+    <label>
+      user_password
+      <input type="password" name="user_password" />
+    </label>
+    <button type="submit">修改</button>
+  </form>
+
+  <h2>响应结果</h2>
+  <pre id="result">等待提交...</pre>
+
+  <script>
+    const form = document.getElementById('form');
+    const resultEl = document.getElementById('result');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const payload = Object.fromEntries(formData.entries());
+
+      resultEl.textContent = '请求中...';
+      try {
+        const res = await fetch('/api/users/updateUser/', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        resultEl.textContent = JSON.stringify(data, null, 2);
+      } catch (err) {
+        resultEl.textContent = '请求失败: ' + err.message;
+      }
+    });
+  </script>
+</body>
+</html>

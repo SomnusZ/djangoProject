@@ -7,13 +7,18 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from app.user.views import register_page
+from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+
+from app.test_views import test_page
 
 urlpatterns = [
     # 管理后台
     path('admin/', admin.site.urls),
-    # 前端页面
-    path('register/', register_page, name='register-page'),
+    # 前端测试页面（通用路由）
+    path('test/<str:name>/', test_page, name='test-page'),
+    # JWT 刷新/校验
+    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/auth/token/verify/', TokenVerifyView.as_view(), name='token_verify'),
     # 用户接口
     path('api/users/', include('app.user.urls')),
     # 模型接口
