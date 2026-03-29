@@ -111,9 +111,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # DRF 配置
 REST_FRAMEWORK = {
-    # 启用 JWT 认证
+    # 启用 JWT 认证，启用自定义user实体
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'app.jwt_authentication.AppUserJWTAuthentication',
     ],
     # 强制登录：所有接口访问必须要求登录并携带有效 Token
     'DEFAULT_PERMISSION_CLASSES': [
@@ -134,6 +134,10 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     # 刷新令牌有效期
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    # 自定义用户主键字段（项目使用 user_id）
+    'USER_ID_FIELD': 'user_id',
+    # Token 中的字段名（可按需调整）
+    'USER_ID_CLAIM': 'user_id',
     # 是否轮换刷新令牌
     'ROTATE_REFRESH_TOKENS': False,
     # 刷新后是否将旧令牌加入黑名单（如需可开启并添加黑名单应用）

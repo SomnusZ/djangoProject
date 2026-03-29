@@ -19,7 +19,11 @@ class RequestLogMiddleware:
         response = self.get_response(request)
 
         duration = (time.time() - start) * 1000
-        user_id = getattr(request.user, "id", None) if getattr(request, "user", None) and request.user.is_authenticated else None
+        is_auth = getattr(request, "user", None) and getattr(request.user, "is_authenticated", True)
+        user_id = None
+        if is_auth:
+            # 兼容自定义用户 user_id
+            user_id = getattr(request.user, "user_id", None) or getattr(request.user, "id", None)
 
         logger.info(
             f"{request.method} {request.path} "

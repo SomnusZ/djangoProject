@@ -35,3 +35,11 @@ class User(models.Model):
     def __str__(self):
         # 优先展示用户名，没有则展示邮箱
         return self.user_name or self.user_mail_address
+
+    @property
+    def is_authenticated(self):
+        """
+        兼容 DRF 权限检查。
+        自定义用户模型不继承 Django Auth 时，始终视为已认证用户。
+        """
+        return True

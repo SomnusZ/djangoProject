@@ -11,6 +11,7 @@
     input { padding: 8px 10px; font-size: 14px; }
     button { padding: 10px 12px; font-size: 14px; cursor: pointer; }
     pre { background: #f6f8fa; padding: 12px; white-space: pre-wrap; }
+    .tip { font-size: 12px; color: #666; }
   </style>
 </head>
 <body>
@@ -27,6 +28,7 @@
       <input type="password" name="user_password" required />
     </label>
     <button type="submit">登录</button>
+    <div class="tip">登录成功后会自动保存 access_token 到浏览器 localStorage</div>
   </form>
 
   <h2>响应结果</h2>
@@ -50,6 +52,11 @@
         });
         const data = await res.json();
         resultEl.textContent = JSON.stringify(data, null, 2);
+
+        // 保存 access_token 便于其它测试页面使用
+        if (data && data.data && data.data.token && data.data.token.access_token) {
+          localStorage.setItem('access_token', data.data.token.access_token);
+        }
       } catch (err) {
         resultEl.textContent = '请求失败: ' + err.message;
       }

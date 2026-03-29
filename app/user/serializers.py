@@ -3,6 +3,8 @@
 负责校验输入参数、转换模型与JSON之间的数据。
 """
 
+import re
+
 from django.contrib.auth.hashers import make_password
 from rest_framework import serializers
 
@@ -52,6 +54,22 @@ class CreateUserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('密码长度不能小于6位')
         return value
 
+    def validate_user_mail_address(self, value):
+        # 去除首尾空格，避免误输入
+        return value.strip()
+
+    def validate_user_phone_number(self, value):
+        """
+        手机号格式校验（中国大陆 11 位手机号）。
+        允许为空（前端可不传）。
+        """
+        if value is None or value == '':
+            return value
+        value = value.strip()
+        if not re.match(r'^1[3-9]\\d{9}$', value):
+            raise serializers.ValidationError('手机号格式不正确')
+        return value
+
     def create(self, validated_data):
         # 对密码进行哈希处理
         raw_password = validated_data.get('user_password')
@@ -82,6 +100,18 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         if 'user_password' in validated_data:
             validated_data['user_password'] = make_password(validated_data['user_password'])
         return super().update(instance, validated_data)
+
+    def validate_user_phone_number(self, value):
+        """
+        手机号格式校验（中国大陆 11 位手机号）。
+        允许为空（前端可不传）。
+        """
+        if value is None or value == '':
+            return value
+        value = value.strip()
+        if not re.match(r'^1[3-9]\\d{9}$', value):
+            raise serializers.ValidationError('手机号格式不正确')
+        return value
 
 
 class LoginSerializer(serializers.Serializer):
