@@ -4,7 +4,6 @@
 """
 
 from django.contrib.auth.hashers import check_password
-from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -19,6 +18,7 @@ from .serializers import (
     DirUserQuerySerializer,
 )
 from app.utils import success_response, error_response
+from app.permissions import get_owned_object_or_403
 
 
 class UserViewSet(viewsets.GenericViewSet):
@@ -36,17 +36,14 @@ class UserViewSet(viewsets.GenericViewSet):
         - 其他接口必须携带有效 Token
         """
         # 优先按 action 名称判断（DRF 会自动设置 self.action）
-        if self.action in {'create_user', 'dir_user'}:
+        if self.action == 'create_user':
             return [AllowAny()]
-        # 兜底：按路径与方法放行注册/登录（避免 action 识别异常）
-        if self.request.method == 'POST' and self.request.path.endswith('/createUser/'):
-            return [AllowAny()]
-        if self.request.method == 'POST' and self.request.path.endswith('/dirUser/'):
+        if self.action == 'dir_user' and self.request.method == 'POST':
             return [AllowAny()]
         return [IsAuthenticated()]
 
     # 注册接口允许匿名访问
-    @action(detail=False, methods=['post'], url_path='createUser', permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], url_path='createUser')
     def create_user(self, request):
         """
         用户注册/新增接口。
@@ -75,10 +72,6 @@ class UserViewSet(viewsets.GenericViewSet):
             "user_password": "newpass"
         }
         """
-        # 只允许修改当前登录用户
-        if not request.user or not getattr(request.user, 'is_authenticated', True):
-            return error_response('未登录', status_code=status.HTTP_401_UNAUTHORIZED)
-
         user = request.user
 
         # 移除仅用于定位的字段，避免序列化器报错
@@ -94,7 +87,7 @@ class UserViewSet(viewsets.GenericViewSet):
         return success_response(UserSerializer(user).data, message='修改成功')
 
     # 登录接口允许匿名访问（POST）；查询接口需要登录（GET）
-    @action(detail=False, methods=['get', 'post'], url_path='dirUser', permission_classes=[AllowAny])
+    @action(detail=False, methods=['get', 'post'], url_path='dirUser')
     def dir_user(self, request):
         """
         用户登录/查询接口。
@@ -133,19 +126,26 @@ class UserViewSet(viewsets.GenericViewSet):
             return success_response(data, message='登录成功')
 
         # GET：查询用户信息（需登录）
-        if not request.user or not getattr(request.user, 'is_authenticated', True):
-            return error_response('未登录', status_code=status.HTTP_401_UNAUTHORIZED)
-
         serializer = DirUserQuerySerializer(data=request.query_params)
         if not serializer.is_valid():
             return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
+        filters = {}
         user_id = serializer.validated_data.get('user_id')
         user_mail_address = serializer.validated_data.get('user_mail_address')
+        if user_id:
+            filters['user_id'] = user_id
+        if user_mail_address:
+            filters['user_mail_address'] = user_mail_address
 
-        user = User.objects.filter(Q(user_id=user_id) | Q(user_mail_address=user_mail_address)).first()
-        if not user:
-            return error_response('用户不存在', status_code=status.HTTP_404_NOT_FOUND)
+        user, denied = get_owned_object_or_403(
+            request,
+            User.objects.all(),
+            not_found_msg='用户不存在',
+            **filters,
+        )
+        if denied:
+            return denied
 
         return success_response(UserSerializer(user).data, message='查询成功')
 

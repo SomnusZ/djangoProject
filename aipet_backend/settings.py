@@ -113,7 +113,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     # 启用 JWT 认证，启用自定义user实体
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'app.jwt_authentication.AppUserJWTAuthentication',
+        'app.permissions.AppUserJWTAuthentication',
     ],
     # 强制登录：所有接口访问必须要求登录并携带有效 Token
     'DEFAULT_PERMISSION_CLASSES': [

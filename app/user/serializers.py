@@ -66,7 +66,7 @@ class CreateUserSerializer(serializers.ModelSerializer):
         if value is None or value == '':
             return value
         value = value.strip()
-        if not re.match(r'^1[3-9]\\d{9}$', value):
+        if not re.match(r'^1[3-9]\d{9}$', value):
             raise serializers.ValidationError('手机号格式不正确')
         return value
 

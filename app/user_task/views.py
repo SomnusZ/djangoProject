@@ -3,12 +3,11 @@
 包含模型相关接口：dirModel、dirModelListByUser、updateModel、createModel。
 """
 
-from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 
-from app.user.models import User
 from app.utils import success_response, error_response
+from app.permissions import IsOwnerPermission, OwnedObjectMixin, OwnedQuerySetMixin
 
 from .models import PetModel
 from .serializers import (
@@ -16,17 +15,20 @@ from .serializers import (
     CreatePetModelSerializer,
     UpdatePetModelSerializer,
     DirModelQuerySerializer,
-    DirModelListByUserSerializer,
 )
 
 
-class PetModelViewSet(viewsets.GenericViewSet):
+class PetModelViewSet(OwnedQuerySetMixin, OwnedObjectMixin, viewsets.GenericViewSet):
     """
     模型接口视图集。
     包含模型新增、查询、修改，以及按用户查询模型列表。
     """
 
     queryset = PetModel.objects.all()
+    # 统一归属权限控制
+    permission_classes = [IsOwnerPermission]
+    # 归属字段（当前用户）
+    owner_field = 'user'
 
     @action(detail=False, methods=['post'], url_path='createModel')
     def create_model(self, request):
@@ -40,7 +42,11 @@ class PetModelViewSet(viewsets.GenericViewSet):
             "model_address": "/models/cat-v1.bin"
         }
         """
-        serializer = CreatePetModelSerializer(data=request.data)
+        # 只允许使用当前登录用户创建
+        data = request.data.copy()
+        data['user_id'] = getattr(request.user, 'user_id', None)
+
+        serializer = CreatePetModelSerializer(data=data)
         if not serializer.is_valid():
             return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
         model_obj = serializer.save()
@@ -61,9 +67,14 @@ class PetModelViewSet(viewsets.GenericViewSet):
         if not user_task_id:
             return error_response('请提供 user_task_id', status_code=status.HTTP_400_BAD_REQUEST)
 
-        model_obj = PetModel.objects.filter(user_task_id=user_task_id).first()
-        if not model_obj:
-            return error_response('模型不存在', status_code=status.HTTP_404_NOT_FOUND)
+        model_obj, denied = self.get_owned_or_403(
+            request,
+            self.get_queryset(),
+            not_found_msg='模型不存在',
+            user_task_id=user_task_id,
+        )
+        if denied:
+            return denied
 
         # 移除仅用于定位的字段，避免序列化器报错
         update_data = request.data.copy()
@@ -89,32 +100,24 @@ class PetModelViewSet(viewsets.GenericViewSet):
             return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
         user_task_id = serializer.validated_data['user_task_id']
-        model_obj = PetModel.objects.filter(user_task_id=user_task_id).first()
-        if not model_obj:
-            return error_response('模型不存在', status_code=status.HTTP_404_NOT_FOUND)
+        model_obj, denied = self.get_owned_or_403(
+            request,
+            self.get_queryset(),
+            not_found_msg='模型不存在',
+            user_task_id=user_task_id,
+        )
+        if denied:
+            return denied
 
         return success_response(PetModelSerializer(model_obj).data, message='查询成功')
 
     @action(detail=False, methods=['get'], url_path='dirModelListByUser')
     def dir_model_list_by_user(self, request):
         """
-        根据用户查询模型列表接口。
+        查询当前登录用户的模型列表接口。
         查询参数示例：
-        /api/models/dirModelListByUser/?user_id=1
-        或
-        /api/models/dirModelListByUser/?user_mail_address=test@example.com
+        /api/models/dirModelListByUser/
         """
-        serializer = DirModelListByUserSerializer(data=request.query_params)
-        if not serializer.is_valid():
-            return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
-
-        user_id = serializer.validated_data.get('user_id')
-        user_mail_address = serializer.validated_data.get('user_mail_address')
-
-        user = User.objects.filter(Q(user_id=user_id) | Q(user_mail_address=user_mail_address)).first()
-        if not user:
-            return error_response('用户不存在', status_code=status.HTTP_404_NOT_FOUND)
-
-        models_qs = PetModel.objects.filter(user=user).order_by('-user_task_id')
+        models_qs = self.get_queryset().order_by('-user_task_id')
         data = PetModelSerializer(models_qs, many=True).data
         return success_response(data, message='查询成功')

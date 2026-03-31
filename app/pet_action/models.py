@@ -5,21 +5,9 @@
 
 from django.db import models
 
-from app.user_task.models import PetModel
-
-
 class PetAction(models.Model):
     # 动作ID：自增主键
     pet_action_id = models.AutoField(primary_key=True, db_column='pet_action_id', verbose_name='动作ID')
-    # 关联模型（多对一）
-    pet_model = models.ForeignKey(
-        PetModel,
-        to_field='user_task_id',
-        db_column='user_task_id',
-        on_delete=models.CASCADE,
-        related_name='pet_actions',
-        verbose_name='模型',
-    )
     # 动作名称
     pet_action_name = models.CharField(max_length=200, verbose_name='动作名称')
 
