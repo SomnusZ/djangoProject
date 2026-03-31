@@ -1,4 +1,4 @@
-﻿"""
+"""
 动作序列化器定义文件。
 负责校验输入参数、转换模型与JSON之间的数据。
 """
@@ -40,5 +40,3 @@ class DirActionQuerySerializer(serializers.Serializer):
     """
 
     pet_action_id = serializers.IntegerField(required=True)
-
-

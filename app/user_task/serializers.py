@@ -1,4 +1,4 @@
-﻿"""
+"""
 模型序列化器定义文件。
 负责校验输入参数、转换模型与JSON之间的数据。
 """
@@ -7,6 +7,8 @@ from rest_framework import serializers
 
 from app.user.models import User
 from app.pet_model.models import PetModel as BasePetModel
+from app.pet_action.models import PetAction
+from app.user_task_action_relation.models import UserTaskActionRelation
 from .models import PetModel
 
 
@@ -17,6 +19,7 @@ class PetModelSerializer(serializers.ModelSerializer):
 
     user_id = serializers.IntegerField(source='user.user_id', read_only=True)
     pet_model_id = serializers.IntegerField(source='pet_model.pet_model_id', read_only=True)
+    action_list = serializers.SerializerMethodField()
 
     class Meta:
         model = PetModel
@@ -26,7 +29,16 @@ class PetModelSerializer(serializers.ModelSerializer):
             'pet_model_id',
             'model_name',
             'model_address',
+            'action_list',
         )
+
+    def get_action_list(self, obj):
+        """
+        返回当前任务已关联的动作列表。
+        """
+        action_ids = UserTaskActionRelation.objects.filter(user_task=obj).values_list('pet_action_id', flat=True)
+        actions = PetAction.objects.filter(pet_action_id__in=action_ids).values('pet_action_id', 'pet_action_name')
+        return list(actions)
 
 
 class CreatePetModelSerializer(serializers.ModelSerializer):

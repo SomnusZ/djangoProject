@@ -76,3 +76,7 @@
 [2026-03-31 00:41:45,528] INFO api POST /api/users/createUser/ status=400 user_id=None time=6.00ms
 [2026-03-31 00:41:50,980] INFO api POST /api/users/createUser/ status=400 user_id=None time=5.00ms
 [2026-03-31 00:41:55,214] INFO api POST /api/users/createUser/ status=400 user_id=None time=6.00ms
+[2026-04-01 00:25:23,007] INFO api GET /test/user_login/ status=200 user_id=None time=7.11ms
+[2026-04-01 00:25:23,159] INFO api GET /favicon.ico status=404 user_id=None time=14.30ms
+[2026-04-01 00:25:29,536] INFO api GET /test/user_create/ status=200 user_id=None time=1.00ms
+[2026-04-01 00:25:51,250] INFO api POST /api/users/createUser/ status=201 user_id=None time=357.11ms

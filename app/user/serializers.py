@@ -1,4 +1,4 @@
-﻿"""
+"""
 序列化器定义文件。
 负责校验输入参数、转换模型与JSON之间的数据。
 """
@@ -6,6 +6,7 @@
 import re
 
 from django.contrib.auth.hashers import make_password
+from django.core.validators import EmailValidator
 from rest_framework import serializers
 
 from .models import User
@@ -35,6 +36,9 @@ class CreateUserSerializer(serializers.ModelSerializer):
     支持邮箱 + 密码注册，可选用户名、手机号、头像。
     """
 
+    # 使用 EmailField 强化邮箱校验
+    user_mail_address = serializers.EmailField()
+
     class Meta:
         model = User
         fields = (
@@ -55,8 +59,16 @@ class CreateUserSerializer(serializers.ModelSerializer):
         return value
 
     def validate_user_mail_address(self, value):
-        # 去除首尾空格，避免误输入
-        return value.strip()
+        """
+        邮箱格式校验：
+        - 允许字母、数字、._%+-
+        - 必须包含 @ 与域名
+        """
+        value = value.strip()
+        EmailValidator()(value)
+        if not re.match(r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,20}$', value):
+            raise serializers.ValidationError('邮箱格式不正确')
+        return value
 
     def validate_user_phone_number(self, value):
         """
@@ -109,7 +121,7 @@ class UpdateUserSerializer(serializers.ModelSerializer):
         if value is None or value == '':
             return value
         value = value.strip()
-        if not re.match(r'^1[3-9]\\d{9}$', value):
+        if not re.match(r'^1[3-9]\d{9}$', value):
             raise serializers.ValidationError('手机号格式不正确')
         return value
 

@@ -1,4 +1,4 @@
-﻿"""
+"""
 通用权限与归属校验工具。
 包含：
 - 自定义 JWT 认证（使用 app.user.User）
@@ -39,6 +39,7 @@ def get_owner_user(obj) -> Optional[User]:
     - obj 是 User 实例
     - obj.user（直接关联用户）
     - obj.pet_model.user（通过 pet_model 间接关联用户）
+    - obj.user_task.user（通过 user_task 间接关联用户）
     """
     if isinstance(obj, User):
         return obj
@@ -46,6 +47,8 @@ def get_owner_user(obj) -> Optional[User]:
         return obj.user
     if hasattr(obj, 'pet_model') and hasattr(obj.pet_model, 'user'):
         return obj.pet_model.user
+    if hasattr(obj, 'user_task') and hasattr(obj.user_task, 'user'):
+        return obj.user_task.user
     return None
 
 

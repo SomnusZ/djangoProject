@@ -36,6 +36,8 @@ INSTALLED_APPS = [
     'app.pet_model.apps.PetModelConfig',
     # 动作应用
     'app.pet_action.apps.PetActionConfig',
+    # 任务动作关系应用
+    'app.user_task_action_relation.apps.UserTaskActionRelationConfig',
 ]
 
 # 中间件

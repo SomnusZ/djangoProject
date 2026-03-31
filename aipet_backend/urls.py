@@ -27,6 +27,8 @@ urlpatterns = [
     path('api/pet-models/', include('app.pet_model.urls')),
     # 动作接口
     path('api/actions/', include('app.pet_action.urls')),
+    # 任务动作关系接口
+    path('api/task-actions/', include('app.user_task_action_relation.urls')),
 ]
 
 # 开发环境下提供媒体文件访问

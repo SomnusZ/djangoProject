@@ -1,4 +1,4 @@
-﻿"""
+"""
 动作视图文件。
 包含动作相关接口：dirAction、createAction。
 """
@@ -23,6 +23,7 @@ class PetActionViewSet(viewsets.GenericViewSet):
     """
 
     queryset = PetAction.objects.all()
+
     @action(detail=False, methods=['post'], url_path='createAction')
     def create_action(self, request):
         """
