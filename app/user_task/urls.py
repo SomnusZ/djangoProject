@@ -1,15 +1,15 @@
-﻿"""
-模型路由定义（仅模型相关）。
+"""
+用户任务路由定义（仅任务相关）。
 """
 
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import PetModelViewSet
+from .views import UserTaskViewSet
 
 router = DefaultRouter()
-# 注册模型路由，最终路径为 /api/models/
-router.register(r'', PetModelViewSet, basename='user_task')
+# 注册任务路由，最终路径为 /api/models/
+router.register(r'', UserTaskViewSet, basename='user_task')
 
 urlpatterns = [
     path('', include(router.urls)),

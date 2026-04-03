@@ -1,17 +1,17 @@
 """
-任务动作关系序列化器定义文件。
+浠诲姟鍔ㄤ綔鍏崇郴搴忓垪鍖栧櫒瀹氫箟鏂囦欢銆
 """
 
 from rest_framework import serializers
 
-from app.user_task.models import PetModel as UserTask
+from app.user_task.models import UserTask
 from app.pet_action.models import PetAction
 from .models import UserTaskActionRelation
 
 
 class BindActionToTaskSerializer(serializers.ModelSerializer):
     """
-    绑定动作到任务的序列化器。
+    缁戝畾鍔ㄤ綔鍒颁换鍔＄殑搴忓垪鍖栧櫒銆
     """
 
     user_task_id = serializers.IntegerField(write_only=True)
@@ -26,12 +26,12 @@ class BindActionToTaskSerializer(serializers.ModelSerializer):
 
     def validate_user_task_id(self, value):
         if not UserTask.objects.filter(user_task_id=value).exists():
-            raise serializers.ValidationError('任务不存在')
+            raise serializers.ValidationError('浠诲姟涓嶅瓨鍦')
         return value
 
     def validate_pet_action_id(self, value):
         if not PetAction.objects.filter(pet_action_id=value).exists():
-            raise serializers.ValidationError('动作不存在')
+            raise serializers.ValidationError('鍔ㄤ綔涓嶅瓨鍦')
         return value
 
     def create(self, validated_data):
@@ -45,7 +45,7 @@ class BindActionToTaskSerializer(serializers.ModelSerializer):
 
 class UnbindActionFromTaskSerializer(serializers.ModelSerializer):
     """
-    解绑动作与任务的序列化器。
+    瑙ｇ粦鍔ㄤ綔涓庝换鍔＄殑搴忓垪鍖栧櫒銆
     """
 
     user_task_id = serializers.IntegerField(write_only=True)
@@ -60,19 +60,19 @@ class UnbindActionFromTaskSerializer(serializers.ModelSerializer):
 
     def validate_user_task_id(self, value):
         if not UserTask.objects.filter(user_task_id=value).exists():
-            raise serializers.ValidationError('任务不存在')
+            raise serializers.ValidationError('浠诲姟涓嶅瓨鍦')
         return value
 
     def validate_pet_action_id(self, value):
         if not PetAction.objects.filter(pet_action_id=value).exists():
-            raise serializers.ValidationError('动作不存在')
+            raise serializers.ValidationError('鍔ㄤ綔涓嶅瓨鍦')
         return value
 
 
 class DirActionListByTaskSerializer(serializers.Serializer):
     """
-    根据任务查询动作列表序列化器。
-    支持 user_task_id 查询。
+    鏍规嵁浠诲姟鏌ヨ㈠姩浣滃垪琛ㄥ簭鍒楀寲鍣ㄣ
+    鏀鎸 user_task_id 鏌ヨ銆
     """
 
     user_task_id = serializers.IntegerField(required=True)

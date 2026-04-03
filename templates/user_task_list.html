@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>User Task 列表测试</title>
+  <style>
+    :root { --bg-1:#0f172a; --bg-2:#1e293b; --card:rgba(255,255,255,.08); --card-border:rgba(255,255,255,.18); --text:#e2e8f0; --muted:#94a3b8; --accent:#22c55e; --accent-2:#38bdf8; --danger:#f97316; --shadow:0 20px 50px rgba(0,0,0,.35); }
+    *{box-sizing:border-box;} body{margin:0;font-family:"Source Han Sans SC","Microsoft YaHei","Noto Sans SC",sans-serif;color:var(--text);background:radial-gradient(1200px 600px at 10% 10%, rgba(56,189,248,.2), transparent 60%),radial-gradient(1200px 600px at 90% 20%, rgba(34,197,94,.2), transparent 55%),linear-gradient(135deg,var(--bg-1),var(--bg-2));min-height:100vh;display:grid;place-items:center;padding:32px 16px;}
+    .shell{width:min(960px,100%);display:grid;gap:20px;} .hero{display:grid;gap:8px;} .hero h1{font-size:clamp(24px,3vw,36px);margin:0;} .hero p{margin:0;color:var(--muted);} .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;}
+    .card{background:var(--card);border:1px solid var(--card-border);border-radius:16px;padding:22px;box-shadow:var(--shadow);backdrop-filter:blur(12px);animation:floatIn .6s ease both;} .card h2{margin-top:0;font-size:18px;}
+    form{display:grid;gap:14px;} label{display:grid;gap:6px;font-size:13px;color:var(--muted);} .field{position:relative;}
+    input{width:100%;padding:12px 14px;border-radius:10px;border:1px solid transparent;background:rgba(15,23,42,.7);color:var(--text);font-size:14px;outline:none;transition:border .2s ease, box-shadow .2s ease;}
+    input:focus{border-color:var(--accent-2);box-shadow:0 0 0 3px rgba(56,189,248,.2);} .hint{font-size:12px;color:var(--muted);} .actions{display:flex;gap:12px;align-items:center;}
+    button{padding:12px 16px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent),#16a34a);color:#0b1220;font-weight:600;cursor:pointer;transition:transform .2s ease, box-shadow .2s ease;}
+    button:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(34,197,94,.3);} .ghost{background:transparent;color:var(--text);border:1px solid var(--card-border);} .status{min-height:20px;font-size:13px;color:var(--muted);} pre{margin:0;padding:14px;border-radius:12px;background:rgba(15,23,42,.8);color:#e2e8f0;font-size:12px;max-height:320px;overflow:auto;border:1px solid rgba(148,163,184,.2);} .badge{display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,.15);color:var(--accent-2);padding:6px 10px;border-radius:999px;font-size:12px;border:1px solid rgba(56,189,248,.35);} @keyframes floatIn{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}} @media (max-width:640px){.actions{flex-direction:column;align-items:stretch;}}
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <span class="badge">任务列表</span>
+      <h1>User Task 列表测试</h1>
+      <p>接口：GET /api/models/dirUserTaskListByUser/</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h2>参数</h2>
+        <form id="form">
+          <label>access_token（留空则从 localStorage 读取）<span class="field"><input type="text" name="access_token" /></span></label>
+          <div class="hint">Authorization: Bearer &lt;token&gt;</div>
+          <div class="status" id="status">准备提交</div>
+          <div class="actions"><button type="submit">执行</button><button type="button" class="ghost" id="resetBtn">清空</button></div>
+        </form>
+      </div>
+      <div class="card"><h2>响应结果</h2><pre id="result">等待提交...</pre></div>
+    </div>
+  </div>
+  <script>
+    const form=document.getElementById('form');const resultEl=document.getElementById('result');const statusEl=document.getElementById('status');const resetBtn=document.getElementById('resetBtn');
+    const setStatus=(t,type='info')=>{statusEl.textContent=t;statusEl.style.color=type==='error'?'#f97316':'#94a3b8';};
+    resetBtn.addEventListener('click',()=>{form.reset();setStatus('已清空');resultEl.textContent='等待提交...';});
+    form.addEventListener('submit',async(e)=>{e.preventDefault();const formData=new FormData(form);const payload=Object.fromEntries(formData.entries());let token=payload.access_token||localStorage.getItem('access_token')||'';delete payload.access_token;
+      setStatus('请求中...');resultEl.textContent='请求中...';
+      try{const res=await fetch('/api/models/dirUserTaskListByUser/',{method:'GET',headers:token?{'Authorization':'Bearer '+token}:{}});
+        const data=await res.json();resultEl.textContent=JSON.stringify(data,null,2);setStatus(data&&data.success?'成功':'失败',data&&data.success?'success':'error');
+      }catch(err){setStatus('请求失败','error');resultEl.textContent='请求失败: '+err.message;}
+    });
+  </script>
+</body>
+</html>
