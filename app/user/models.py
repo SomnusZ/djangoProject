@@ -18,12 +18,19 @@ class User(models.Model):
         null=True,
         verbose_name='头像',
     )
-    # 手机号：允许为空
-    user_phone_number = models.CharField(max_length=20, blank=True, null=True, verbose_name='手机号')
+    # 手机号：注册必填（模型层允许空，校验交由序列化器控制）
+    user_phone_number = models.CharField(
+        max_length=20,
+        unique=True,
+        db_index=True,
+        blank=True,
+        null=True,
+        verbose_name='手机号',
+    )
     # 密码：存储哈希后的密码字符串
     user_password = models.CharField(max_length=128, verbose_name='密码')
-    # 邮箱：唯一，用于登录与注册
-    user_mail_address = models.EmailField(unique=True, db_index=True, verbose_name='邮箱')
+    # 邮箱：弃用（允许为空，保留字段兼容历史数据）
+    user_mail_address = models.EmailField(unique=True, db_index=True, blank=True, null=True, verbose_name='邮箱')
 
     class Meta:
         # 指定数据库表名
@@ -33,8 +40,8 @@ class User(models.Model):
         verbose_name_plural = '用户'
 
     def __str__(self):
-        # 优先展示用户名，没有则展示邮箱
-        return self.user_name or self.user_mail_address
+        # 优先展示用户名，没有则展示手机号或邮箱
+        return self.user_name or self.user_phone_number or self.user_mail_address or str(self.user_id)
 
     @property
     def is_authenticated(self):

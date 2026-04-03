@@ -49,10 +49,10 @@ class UserViewSet(viewsets.GenericViewSet):
         用户注册/新增接口。
         请求体示例：
         {
-            "user_mail_address": "test@example.com",
+            "user_phone_number": "13800000000",
             "user_password": "123456",
-            "user_name": "Tom",
-            "user_phone_number": "13800000000"
+            "user_password_confirm": "123456",
+            "user_phone_code": "1234"
         }
         """
         serializer = CreateUserSerializer(data=request.data)
@@ -68,8 +68,7 @@ class UserViewSet(viewsets.GenericViewSet):
         仅允许修改当前登录用户自己的信息。
         请求体示例：
         {
-            "user_name": "Jerry",
-            "user_password": "newpass"
+            "user_name": "Jerry"
         }
         """
         user = request.user
@@ -100,15 +99,22 @@ class UserViewSet(viewsets.GenericViewSet):
             if not serializer.is_valid():
                 return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
 
-            user_mail_address = serializer.validated_data['user_mail_address']
-            user_password = serializer.validated_data['user_password']
+            user_phone_number = serializer.validated_data['user_phone_number']
+            login_type = serializer.validated_data['login_type']
+            user_password = serializer.validated_data.get('user_password')
+            user_phone_code = serializer.validated_data.get('user_phone_code')
 
-            user = User.objects.filter(user_mail_address=user_mail_address).first()
+            user = User.objects.filter(user_phone_number=user_phone_number).first()
             if not user:
                 return error_response('用户不存在', status_code=status.HTTP_404_NOT_FOUND)
 
-            if not check_password(user_password, user.user_password):
-                return error_response('密码错误', status_code=status.HTTP_400_BAD_REQUEST)
+            if login_type == 'password':
+                if not check_password(user_password, user.user_password):
+                    return error_response('密码错误', status_code=status.HTTP_400_BAD_REQUEST)
+            elif login_type == 'code':
+                # 手机验证码登录占位（暂不做真实校验）
+                if not user_phone_code:
+                    return error_response('请输入手机验证码', status_code=status.HTTP_400_BAD_REQUEST)
 
             # 生成 JWT（access / refresh）
             refresh = RefreshToken.for_user(user)
@@ -132,11 +138,11 @@ class UserViewSet(viewsets.GenericViewSet):
 
         filters = {}
         user_id = serializer.validated_data.get('user_id')
-        user_mail_address = serializer.validated_data.get('user_mail_address')
+        user_phone_number = serializer.validated_data.get('user_phone_number')
         if user_id:
             filters['user_id'] = user_id
-        if user_mail_address:
-            filters['user_mail_address'] = user_mail_address
+        if user_phone_number:
+            filters['user_phone_number'] = user_phone_number
 
         user, denied = get_owned_object_or_403(
             request,
