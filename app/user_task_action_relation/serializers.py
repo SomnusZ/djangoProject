@@ -1,78 +1,67 @@
-"""
-浠诲姟鍔ㄤ綔鍏崇郴搴忓垪鍖栧櫒瀹氫箟鏂囦欢銆
+﻿"""
+任务动作关系序列化器。
 """
 
 from rest_framework import serializers
 
 from app.user_task.models import UserTask
 from app.pet_action.models import PetAction
+
 from .models import UserTaskActionRelation
 
 
-class BindActionToTaskSerializer(serializers.ModelSerializer):
+class BindActionToTaskSerializer(serializers.Serializer):
     """
-    缁戝畾鍔ㄤ綔鍒颁换鍔＄殑搴忓垪鍖栧櫒銆
+    绑定动作到任务。
     """
 
-    user_task_id = serializers.IntegerField(write_only=True)
-    pet_action_id = serializers.IntegerField(write_only=True)
+    user_task_id = serializers.IntegerField(required=True)
+    pet_action_id = serializers.IntegerField(required=True)
 
-    class Meta:
-        model = UserTaskActionRelation
-        fields = (
-            'user_task_id',
-            'pet_action_id',
-        )
+    def validate(self, attrs):
+        user_task_id = attrs.get('user_task_id')
+        pet_action_id = attrs.get('pet_action_id')
 
-    def validate_user_task_id(self, value):
-        if not UserTask.objects.filter(user_task_id=value).exists():
-            raise serializers.ValidationError('浠诲姟涓嶅瓨鍦')
-        return value
+        if not UserTask.objects.filter(user_task_id=user_task_id).exists():
+            raise serializers.ValidationError('任务不存在')
+        if not PetAction.objects.filter(pet_action_id=pet_action_id).exists():
+            raise serializers.ValidationError('动作不存在')
 
-    def validate_pet_action_id(self, value):
-        if not PetAction.objects.filter(pet_action_id=value).exists():
-            raise serializers.ValidationError('鍔ㄤ綔涓嶅瓨鍦')
-        return value
+        if UserTaskActionRelation.objects.filter(
+            user_task_id=user_task_id,
+            pet_action_id=pet_action_id
+        ).exists():
+            raise serializers.ValidationError('该任务已绑定该动作')
+
+        return attrs
 
     def create(self, validated_data):
-        user_task_id = validated_data.pop('user_task_id')
-        pet_action_id = validated_data.pop('pet_action_id')
-        user_task = UserTask.objects.get(user_task_id=user_task_id)
-        pet_action = PetAction.objects.get(pet_action_id=pet_action_id)
-        obj, _ = UserTaskActionRelation.objects.get_or_create(user_task=user_task, pet_action=pet_action)
-        return obj
+        return UserTaskActionRelation.objects.create(**validated_data)
 
 
-class UnbindActionFromTaskSerializer(serializers.ModelSerializer):
+class UnbindActionFromTaskSerializer(serializers.Serializer):
     """
-    瑙ｇ粦鍔ㄤ綔涓庝换鍔＄殑搴忓垪鍖栧櫒銆
+    解绑动作与任务。
     """
 
-    user_task_id = serializers.IntegerField(write_only=True)
-    pet_action_id = serializers.IntegerField(write_only=True)
+    user_task_id = serializers.IntegerField(required=True)
+    pet_action_id = serializers.IntegerField(required=True)
 
-    class Meta:
-        model = UserTaskActionRelation
-        fields = (
-            'user_task_id',
-            'pet_action_id',
-        )
+    def validate(self, attrs):
+        user_task_id = attrs.get('user_task_id')
+        pet_action_id = attrs.get('pet_action_id')
 
-    def validate_user_task_id(self, value):
-        if not UserTask.objects.filter(user_task_id=value).exists():
-            raise serializers.ValidationError('浠诲姟涓嶅瓨鍦')
-        return value
+        if not UserTask.objects.filter(user_task_id=user_task_id).exists():
+            raise serializers.ValidationError('任务不存在')
+        if not PetAction.objects.filter(pet_action_id=pet_action_id).exists():
+            raise serializers.ValidationError('动作不存在')
 
-    def validate_pet_action_id(self, value):
-        if not PetAction.objects.filter(pet_action_id=value).exists():
-            raise serializers.ValidationError('鍔ㄤ綔涓嶅瓨鍦')
-        return value
+        return attrs
 
 
 class DirActionListByTaskSerializer(serializers.Serializer):
     """
-    鏍规嵁浠诲姟鏌ヨ㈠姩浣滃垪琛ㄥ簭鍒楀寲鍣ㄣ
-    鏀鎸 user_task_id 鏌ヨ銆
+    通过任务查询动作列表。
     """
 
     user_task_id = serializers.IntegerField(required=True)

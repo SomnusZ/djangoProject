@@ -29,6 +29,10 @@ class UserTask(models.Model):
         # 管理后台展示名称
         verbose_name = '用户任务'
         verbose_name_plural = '用户任务'
+        # 同一用户下任务名不能重复（不同用户可重复）
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'task_name'], name='uniq_user_task_name'),
+        ]
 
     def __str__(self):
         # 展示任务名称

@@ -1,4 +1,4 @@
-"""
+﻿"""
 通用权限与归属校验工具。
 包含：
 - 自定义 JWT 认证（使用 app.user.User）
@@ -35,11 +35,11 @@ class AppUserJWTAuthentication(JWTAuthentication):
 def get_owner_user(obj) -> Optional[User]:
     """
     获取对象所属用户。
-    支持三种结构：
-    - obj 是 User 实例
-    - obj.user（直接关联用户）
-    - obj.pet_model.user（通过 pet_model 间接关联用户）
-    - obj.user_task.user（通过 user_task 间接关联用户）
+    支持：
+    - obj 是 User
+    - obj.user
+    - obj.pet_model.user
+    - obj.user_task.user
     """
     if isinstance(obj, User):
         return obj
@@ -55,12 +55,11 @@ def get_owner_user(obj) -> Optional[User]:
 class IsOwnerPermission(BasePermission):
     """
     统一归属权限：
-    - 仅允许已登录用户访问
-    - 仅允许访问自己所属的数据
+    - 必须登录
+    - 只能访问归属自己的数据
     """
 
     def has_permission(self, request, view):
-        # 必须登录
         return bool(request.user and getattr(request.user, 'is_authenticated', True))
 
     def has_object_permission(self, request, view, obj):
@@ -73,22 +72,24 @@ class IsOwnerPermission(BasePermission):
 def get_owned_object_or_403(request, queryset, not_found_msg='资源不存在', **filters):
     """
     统一获取 + 归属校验：
-    - 对象不存在 -> 404
-    - 不属于当前用户 -> 403
+    - 不存在 -> 404
+    - 非本人 -> 403
     - 成功 -> 返回对象
     """
     obj = queryset.filter(**filters).first()
     if not obj:
         return None, error_response(not_found_msg, status_code=404)
+
     owner = get_owner_user(obj)
     if owner is None or getattr(owner, 'user_id', None) != getattr(request.user, 'user_id', None):
         return None, error_response('无权限', status_code=403)
+
     return obj, None
 
 
 class OwnedObjectMixin:
     """
-    提供统一方法：get_owned_or_403
+    提供 get_owned_or_403 方法。
     """
 
     def get_owned_or_403(self, request, queryset, not_found_msg='资源不存在', **filters):
@@ -97,7 +98,7 @@ class OwnedObjectMixin:
 
 class OwnedQuerySetMixin:
     """
-    统一归属查询集：
+    统一归属过滤：
     - owner_field 指向“归属用户”的字段路径（支持 ORM 关系路径）
     - 默认过滤为当前登录用户的数据
     """
@@ -110,7 +111,6 @@ class OwnedQuerySetMixin:
             return qs.none()
         if not self.owner_field:
             return qs
-        # 当 owner_field = 'self' 时，表示对象本身就是用户对象
         if self.owner_field == 'self':
             return qs.filter(user_id=getattr(self.request.user, 'user_id', None))
         return qs.filter(**{self.owner_field: self.request.user})

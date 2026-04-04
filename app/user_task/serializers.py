@@ -44,6 +44,17 @@ class CreateUserTaskSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('用户不存在')
         return value
 
+    def validate(self, attrs):
+        """
+        同一用户下 task_name 不可重复（不同用户允许重复）。
+        """
+        user_id = attrs.get('user_id')
+        task_name = attrs.get('task_name')
+        if user_id and task_name:
+            if UserTask.objects.filter(user_id=user_id, task_name=task_name).exists():
+                raise serializers.ValidationError('任务名已存在')
+        return attrs
+
     def create(self, validated_data):
         user_id = validated_data.pop('user_id')
         user = User.objects.get(user_id=user_id)
@@ -61,6 +72,21 @@ class UpdateUserTaskSerializer(serializers.ModelSerializer):
         fields = (
             'task_name',
         )
+
+    def validate_task_name(self, value):
+        """
+        修改时同一用户下 task_name 不可重复（排除自身）。
+        """
+        value = value.strip()
+        instance = self.instance
+        if instance:
+            exists = UserTask.objects.filter(
+                user_id=instance.user_id,
+                task_name=value,
+            ).exclude(user_task_id=instance.user_task_id).exists()
+            if exists:
+                raise serializers.ValidationError('任务名已存在')
+        return value
 
 
 class DirUserTaskQuerySerializer(serializers.Serializer):
