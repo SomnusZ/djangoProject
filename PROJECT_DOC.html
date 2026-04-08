@@ -1,0 +1,698 @@
+﻿<!doctype html>
+<html lang='zh-CN'>
+<head>
+<meta charset='utf-8'>
+<meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>AIPet Backend 接口文档</title>
+<style>
+:root{--bg:#f7f8fb;--paper:#ffffff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#0f4c81;--code-bg:#0b1220;--code-ink:#e5e7eb;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+.header{background:linear-gradient(135deg,#0f4c81,#12264a);color:#fff;padding:28px 24px}
+.header h1{margin:0 0 6px;font-size:28px;letter-spacing:.3px}
+.header p{margin:0;color:#dbe7ff}
+.container{max-width:1100px;margin:0 auto;padding:24px}
+.paper{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:28px;box-shadow:0 6px 20px rgba(17,24,39,.06)}
+h1,h2,h3,h4{color:var(--accent)}
+h2{border-bottom:1px solid var(--line);padding-bottom:6px}
+code{background:#eef2ff;padding:2px 6px;border-radius:4px;font-family:Consolas,monospace}
+pre{background:var(--code-bg);color:var(--code-ink);padding:14px;border-radius:8px;overflow:auto}
+pre code{background:transparent;padding:0}
+hr{border:none;border-top:1px solid var(--line);margin:24px 0}
+.table-wrap{overflow:auto;margin:14px 0}
+.table-wrap table{border-collapse:collapse;width:100%;font-size:14px}
+.table-wrap th,.table-wrap td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+.table-wrap th{background:#f3f4f6}
+ul{padding-left:18px}
+li{margin:4px 0}
+.toc{background:#f8fafc;border:1px dashed var(--line);padding:12px 14px;border-radius:8px;margin:14px 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.section{margin-top:18px}
+</style>
+</head><body>
+<div class='header'><div class='container'><h1>AIPet Backend 接口文档</h1></div></div><div class='container'><div class='paper'>
+<div class='toc'><strong>说明文档</strong><ul>
+<li><a href='#业务说明与表结构'>业务说明与表结构</a></li>
+<li><a href='#api-文档'>API 文档</a></li>
+</ul></div>
+<p>﻿# AIPet Backend 项目文档</p>
+<div style="height:10px"></div>
+<h2 id='业务说明与表结构'>业务说明与表结构</h2>
+<div style="height:10px"></div>
+<p><strong>业务概览</strong></p>
+<ul>
+<li>用户注册后拥有自己的任务（UserTask），任务属于用户（1 对多）。</li>
+<li>动作（PetAction）是动作字典，本身不归属于某个用户。</li>
+<li>任务与动作是多对多关系，通过中间表 <code>user_task_action_relation</code> 进行绑定/解绑。</li>
+<li>宠物模型（PetModel）为模型字典，本身与用户/任务无强关联（当前版本为独立表）。</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>表结构概览</strong></p>
+<div class='table-wrap'><table><thead><tr><th>表名</th><th>主键</th><th>核心字段</th><th>说明</th></tr></thead><tbody>
+<tr><td>user</td><td>user_id</td><td>user_name, user_profile_picture, user_phone_number, user_password, user_mail_address</td><td>用户基础信息表（手机号唯一，密码为哈希）</td></tr>
+<tr><td>user_task</td><td>user_task_id</td><td>user_id(FK), task_name</td><td>用户任务表；同一用户下 task_name 不可重复</td></tr>
+<tr><td>pet_action</td><td>pet_action_id</td><td>pet_action_name</td><td>动作字典表</td></tr>
+<tr><td>pet_model</td><td>pet_model_id</td><td>pet_model_name</td><td>模型字典表</td></tr>
+<tr><td>user_task_action_relation</td><td>relation_id</td><td>user_task_id(FK), pet_action_id(FK)</td><td>任务-动作关系表（同一任务同一动作唯一）</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p><strong>关联逻辑</strong></p>
+<ul>
+<li>User 1 —— N UserTask</li>
+<li>UserTask N —— N PetAction（通过 user_task_action_relation）</li>
+<li>PetModel：独立表（当前不与 UserTask / User 直接关联）</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>关系示意（文本版）</strong></p>
+<pre><code>User (1) ───────&lt; UserTask (N)
+UserTask (N) &gt;───&lt; PetAction (N)
+             \    (via user_task_action_relation)
+PetModel 为独立字典表</code></pre>
+<div style="height:10px"></div>
+<p>AIPet Backend 项目文档</p>
+<div style="height:10px"></div>
+<p><strong>Project Overview</strong></p>
+<p>本项目为基于 Django + DRF + MySQL 的后端服务，提供用户、任务、动作、宠物模型及任务-动作关系等接口，并使用 JWT 进行统一身份认证。</p>
+<div style="height:10px"></div>
+<p><strong>Tech Stack</strong></p>
+<ul>
+<li>Python 3.11</li>
+<li>Django 5.2.12</li>
+<li>Django REST framework 3.16.1</li>
+<li>MySQL 8.x</li>
+<li>djangorestframework-simplejwt 5.5.1</li>
+<li>mysqlclient 2.2.8</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>Project Structure</strong></p>
+<pre><code>F:\workspace_Pycharm_git\djangoProject
+├─ aipet_backend                  # 项目主配置
+├─ app                            # 业务应用
+│  ├─ user                        # 用户模块
+│  ├─ user_task                   # 用户任务模块
+│  ├─ pet_action                  # 动作模块
+│  ├─ pet_model                   # 宠物模型模块
+│  ├─ user_task_action_relation   # 任务-动作关系模块
+│  ├─ permissions.py              # 自定义 JWT 认证与权限
+│  ├─ utils.py                    # 统一响应格式
+│  └─ log_middleware.py           # 请求日志中间件
+├─ templates                      # 前端测试页面
+├─ logs                           # 日志文件
+├─ manage.py
+└─ requirements.txt</code></pre>
+<div style="height:10px"></div>
+<p><strong>Development Process</strong></p>
+<p>1. 创建虚拟环境并安装依赖</p>
+<pre><code>.\venv\Scripts\python.exe -m pip install -r requirements.txt</code></pre>
+<p>2. 配置数据库（MySQL）</p>
+<ul>
+<li><code>aipet_backend\settings.py</code> 中配置 <code>DATABASES</code></li>
+</ul>
+<p>3. 迁移数据库</p>
+<pre><code>.\venv\Scripts\python.exe manage.py makemigrations
+.\venv\Scripts\python.exe manage.py migrate</code></pre>
+<p>4. 启动服务</p>
+<pre><code>.\venv\Scripts\python.exe manage.py runserver 0.0.0.0:8000</code></pre>
+<p>5. 浏览器访问测试页面</p>
+<ul>
+<li><code>http://127.0.0.1:8000/test/&amp;lt;页面名&amp;gt;/</code></li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>Auth &amp;amp; Permission</strong></p>
+<ul>
+<li>默认所有接口需要登录并携带 JWT Access Token</li>
+<li>例外：注册与登录允许匿名访问</li>
+<li>Token 使用 <code>Authorization: Bearer &amp;lt;access_token&amp;gt;</code></li>
+<li>刷新与校验接口：</li>
+</ul>
+<p>  - <code>POST /api/auth/token/refresh/</code></p>
+<p>  - <code>POST /api/auth/token/verify/</code></p>
+<div style="height:10px"></div>
+<p><strong>Common Response Format</strong></p>
+<p>成功：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {},
+  &quot;message&quot;: &quot;操作成功&quot;
+}</code></pre>
+<p>失败：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;fail&quot;,
+  &quot;success&quot;: false,
+  &quot;data&quot;: null,
+  &quot;message&quot;: &quot;错误说明或字段校验错误&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h1 id='api-文档'>API 文档</h1>
+<div style="height:10px"></div>
+<p><strong>1. 用户模块（/api/users/）</strong></p>
+<div style="height:10px"></div>
+<p><strong>1.1 用户注册</strong></p>
+<ul>
+<li>接口：<code>POST /api/users/createUser/</code></li>
+<li>认证：否（匿名允许）</li>
+<li>说明：手机号注册，系统自动生成 user_name</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_phone_number</td><td>string</td><td>是</td><td>中国大陆 11 位手机号，唯一</td></tr>
+<tr><td>user_password</td><td>string</td><td>是</td><td>密码，至少 6 位</td></tr>
+<tr><td>user_password_confirm</td><td>string</td><td>是</td><td>密码确认</td></tr>
+<tr><td>user_phone_code</td><td>string</td><td>是</td><td>手机验证码（占位，暂不校验真实短信）</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;user_phone_number&quot;: &quot;13800000000&quot;,
+  &quot;user_password&quot;: &quot;123456&quot;,
+  &quot;user_password_confirm&quot;: &quot;123456&quot;,
+  &quot;user_phone_code&quot;: &quot;1234&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user_id&quot;: 1,
+    &quot;user_name&quot;: &quot;user_a1B2c3D4&quot;,
+    &quot;user_profile_picture&quot;: null,
+    &quot;user_phone_number&quot;: &quot;13800000000&quot;,
+    &quot;user_mail_address&quot;: null
+  },
+  &quot;message&quot;: &quot;注册成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>失败响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;fail&quot;,
+  &quot;success&quot;: false,
+  &quot;data&quot;: null,
+  &quot;message&quot;: {
+    &quot;user_phone_number&quot;: [&quot;手机号已存在&quot;]
+  }
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>1.2 用户登录</strong></p>
+<ul>
+<li>接口：<code>POST /api/users/dirUser/</code></li>
+<li>认证：否（匿名允许）</li>
+<li>说明：支持两种方式登录</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_phone_number</td><td>string</td><td>是</td><td>手机号</td></tr>
+<tr><td>login_type</td><td>string</td><td>是</td><td>`password` 或 `code`</td></tr>
+<tr><td>user_password</td><td>string</td><td>条件</td><td>login_type=password 时必填</td></tr>
+<tr><td>user_phone_code</td><td>string</td><td>条件</td><td>login_type=code 时必填</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例（密码登录）：</p>
+<pre><code>{
+  &quot;user_phone_number&quot;: &quot;13800000000&quot;,
+  &quot;login_type&quot;: &quot;password&quot;,
+  &quot;user_password&quot;: &quot;123456&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>请求示例（验证码登录）：</p>
+<pre><code>{
+  &quot;user_phone_number&quot;: &quot;13800000000&quot;,
+  &quot;login_type&quot;: &quot;code&quot;,
+  &quot;user_phone_code&quot;: &quot;1234&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user&quot;: {
+      &quot;user_id&quot;: 1,
+      &quot;user_name&quot;: &quot;user_a1B2c3D4&quot;,
+      &quot;user_profile_picture&quot;: null,
+      &quot;user_phone_number&quot;: &quot;13800000000&quot;,
+      &quot;user_mail_address&quot;: null
+    },
+    &quot;token&quot;: {
+      &quot;access_token&quot;: &quot;&lt;access_token&gt;&quot;,
+      &quot;refresh_token&quot;: &quot;&lt;refresh_token&gt;&quot;
+    }
+  },
+  &quot;message&quot;: &quot;登录成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>失败响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;fail&quot;,
+  &quot;success&quot;: false,
+  &quot;data&quot;: null,
+  &quot;message&quot;: &quot;密码错误&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>1.3 用户信息查询</strong></p>
+<ul>
+<li>接口：<code>GET /api/users/dirUser/</code></li>
+<li>认证：是</li>
+<li>说明：只能查询当前登录用户本人</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_id</td><td>int</td><td>否</td><td>与 user_phone_number 二选一</td></tr>
+<tr><td>user_phone_number</td><td>string</td><td>否</td><td>与 user_id 二选一</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>GET /api/users/dirUser/?user_id=1</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user_id&quot;: 1,
+    &quot;user_name&quot;: &quot;user_a1B2c3D4&quot;,
+    &quot;user_profile_picture&quot;: null,
+    &quot;user_phone_number&quot;: &quot;13800000000&quot;,
+    &quot;user_mail_address&quot;: null
+  },
+  &quot;message&quot;: &quot;查询成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>失败响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;fail&quot;,
+  &quot;success&quot;: false,
+  &quot;data&quot;: null,
+  &quot;message&quot;: &quot;无权限&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>1.4 用户信息修改</strong></p>
+<ul>
+<li>接口：<code>PUT /api/users/updateUser/</code></li>
+<li>认证：是</li>
+<li>说明：仅允许修改 <code>user_name</code></li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_name</td><td>string</td><td>是</td><td>仅允许修改该字段</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;user_name&quot;: &quot;Jerry&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user_id&quot;: 1,
+    &quot;user_name&quot;: &quot;Jerry&quot;,
+    &quot;user_profile_picture&quot;: null,
+    &quot;user_phone_number&quot;: &quot;13800000000&quot;,
+    &quot;user_mail_address&quot;: null
+  },
+  &quot;message&quot;: &quot;修改成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<p><strong>2. 动作模块（/api/actions/）</strong></p>
+<div style="height:10px"></div>
+<p><strong>2.1 动作创建</strong></p>
+<ul>
+<li>接口：<code>POST /api/actions/createAction/</code></li>
+<li>认证：是</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>pet_action_name</td><td>string</td><td>是</td><td>动作名称</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;pet_action_name&quot;: &quot;run&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;pet_action_id&quot;: 1,
+    &quot;pet_action_name&quot;: &quot;run&quot;
+  },
+  &quot;message&quot;: &quot;创建成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>2.2 动作查询</strong></p>
+<ul>
+<li>接口：<code>GET /api/actions/dirAction/</code></li>
+<li>认证：是</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>pet_action_id</td><td>int</td><td>是</td><td>动作ID</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>GET /api/actions/dirAction/?pet_action_id=1</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;pet_action_id&quot;: 1,
+    &quot;pet_action_name&quot;: &quot;run&quot;
+  },
+  &quot;message&quot;: &quot;查询成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<p><strong>3. 宠物模型模块（/api/pet-models/）</strong></p>
+<div style="height:10px"></div>
+<p><strong>3.1 模型创建</strong></p>
+<ul>
+<li>接口：<code>POST /api/pet-models/createModel/</code></li>
+<li>认证：是</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>pet_model_name</td><td>string</td><td>是</td><td>模型名称</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;pet_model_name&quot;: &quot;cat&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;pet_model_id&quot;: 1,
+    &quot;pet_model_name&quot;: &quot;cat&quot;
+  },
+  &quot;message&quot;: &quot;创建成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>3.2 模型查询</strong></p>
+<ul>
+<li>接口：<code>GET /api/pet-models/dirModel/</code></li>
+<li>认证：是</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>pet_model_id</td><td>int</td><td>是</td><td>模型ID</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>GET /api/pet-models/dirModel/?pet_model_id=1</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;pet_model_id&quot;: 1,
+    &quot;pet_model_name&quot;: &quot;cat&quot;
+  },
+  &quot;message&quot;: &quot;查询成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<p><strong>4. 用户任务模块（/api/models/）</strong></p>
+<div style="height:10px"></div>
+<p><strong>4.1 任务创建</strong></p>
+<ul>
+<li>接口：<code>POST /api/models/createUserTask/</code></li>
+<li>认证：是</li>
+<li>说明：user_id 从 Token 自动取得，不能手动传</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>task_name</td><td>string</td><td>是</td><td>任务名称，同一用户下不可重复</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;task_name&quot;: &quot;我的任务&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user_task_id&quot;: 1,
+    &quot;user_id&quot;: 1,
+    &quot;task_name&quot;: &quot;我的任务&quot;
+  },
+  &quot;message&quot;: &quot;创建成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>4.2 任务修改</strong></p>
+<ul>
+<li>接口：<code>PUT /api/models/updateUserTask/</code></li>
+<li>认证：是</li>
+<li>说明：仅允许修改 <code>task_name</code></li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+<tr><td>task_name</td><td>string</td><td>是</td><td>新任务名，同一用户下不可重复</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;user_task_id&quot;: 1,
+  &quot;task_name&quot;: &quot;新的任务名&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user_task_id&quot;: 1,
+    &quot;user_id&quot;: 1,
+    &quot;task_name&quot;: &quot;新的任务名&quot;
+  },
+  &quot;message&quot;: &quot;修改成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>4.3 查询单个任务</strong></p>
+<ul>
+<li>接口：<code>GET /api/models/dirUserTask/</code></li>
+<li>认证：是</li>
+<li>说明：仅允许查询本人任务</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>GET /api/models/dirUserTask/?user_task_id=1</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user_task_id&quot;: 1,
+    &quot;user_id&quot;: 1,
+    &quot;task_name&quot;: &quot;我的任务&quot;
+  },
+  &quot;message&quot;: &quot;查询成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>4.4 查询当前用户任务列表</strong></p>
+<ul>
+<li>接口：<code>GET /api/models/dirUserTaskListByUser/</code></li>
+<li>认证：是</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：无</p>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>GET /api/models/dirUserTaskListByUser/</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: [
+    {
+      &quot;user_task_id&quot;: 2,
+      &quot;user_id&quot;: 1,
+      &quot;task_name&quot;: &quot;任务B&quot;
+    },
+    {
+      &quot;user_task_id&quot;: 1,
+      &quot;user_id&quot;: 1,
+      &quot;task_name&quot;: &quot;任务A&quot;
+    }
+  ],
+  &quot;message&quot;: &quot;查询成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<p><strong>5. 任务-动作关系模块（/api/task-actions/）</strong></p>
+<div style="height:10px"></div>
+<p><strong>5.1 绑定动作到任务</strong></p>
+<ul>
+<li>接口：<code>POST /api/task-actions/bindActionToTask/</code></li>
+<li>认证：是</li>
+<li>说明：仅允许绑定本人任务</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+<tr><td>pet_action_id</td><td>int</td><td>是</td><td>动作ID</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;user_task_id&quot;: 1,
+  &quot;pet_action_id&quot;: 2
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;relation_id&quot;: 1,
+    &quot;user_task_id&quot;: 1,
+    &quot;pet_action_id&quot;: 2
+  },
+  &quot;message&quot;: &quot;绑定成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>5.2 解绑动作与任务</strong></p>
+<ul>
+<li>接口：<code>POST /api/task-actions/unbindActionFromTask/</code></li>
+<li>认证：是</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+<tr><td>pet_action_id</td><td>int</td><td>是</td><td>动作ID</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;user_task_id&quot;: 1,
+  &quot;pet_action_id&quot;: 2
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: {
+    &quot;user_task_id&quot;: 1,
+    &quot;pet_action_id&quot;: 2
+  },
+  &quot;message&quot;: &quot;解绑成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>5.3 查询任务的动作列表</strong></p>
+<ul>
+<li>接口：<code>GET /api/task-actions/dirActionListByTask/</code></li>
+<li>认证：是</li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>user_task_id</td><td>int</td><td>是</td><td>任务ID</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>GET /api/task-actions/dirActionListByTask/?user_task_id=1</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;result&quot;: &quot;success&quot;,
+  &quot;success&quot;: true,
+  &quot;data&quot;: [
+    {
+      &quot;pet_action_id&quot;: 1,
+      &quot;pet_action_name&quot;: &quot;run&quot;
+    },
+    {
+      &quot;pet_action_id&quot;: 2,
+      &quot;pet_action_name&quot;: &quot;sit&quot;
+    }
+  ],
+  &quot;message&quot;: &quot;查询成功&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<p><strong>6. JWT 刷新与校验</strong></p>
+<div style="height:10px"></div>
+<p><strong>6.1 刷新 Token</strong></p>
+<ul>
+<li>接口：<code>POST /api/auth/token/refresh/</code></li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>refresh</td><td>string</td><td>是</td><td>refresh_token</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;refresh&quot;: &quot;&lt;refresh_token&gt;&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{
+  &quot;access&quot;: &quot;&lt;new_access_token&gt;&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p><strong>6.2 校验 Token</strong></p>
+<ul>
+<li>接口：<code>POST /api/auth/token/verify/</code></li>
+</ul>
+<div style="height:10px"></div>
+<p>输入参数：</p>
+<div class='table-wrap'><table><thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead><tbody>
+<tr><td>token</td><td>string</td><td>是</td><td>access_token 或 refresh_token</td></tr>
+</tbody></table></div>
+<div style="height:10px"></div>
+<p>请求示例：</p>
+<pre><code>{
+  &quot;token&quot;: &quot;&lt;access_token&gt;&quot;
+}</code></pre>
+<div style="height:10px"></div>
+<p>成功响应示例：</p>
+<pre><code>{}</code></pre>
+<div style="height:10px"></div>
+</div></div></body></html>

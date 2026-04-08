@@ -1,0 +1,325 @@
+﻿<!doctype html>
+<html lang='zh-CN'>
+<head>
+<meta charset='utf-8'>
+<meta http-equiv='Content-Type' content='text/html; charset=utf-8'>
+<meta name='viewport' content='width=device-width, initial-scale=1'>
+<title>AIPet Backend ????</title>
+<style>
+:root{--bg:#f7f8fb;--paper:#ffffff;--ink:#1f2937;--muted:#6b7280;--line:#e5e7eb;--accent:#0f4c81;--code-bg:#0b1220;--code-ink:#e5e7eb;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Segoe UI","Microsoft YaHei",system-ui,-apple-system,sans-serif}
+.header{background:linear-gradient(135deg,#0f4c81,#12264a);color:#fff;padding:28px 24px}
+.header h1{margin:0 0 6px;font-size:28px;letter-spacing:.3px}
+.header p{margin:0;color:#dbe7ff}
+.container{max-width:1100px;margin:0 auto;padding:24px}
+.paper{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:28px;box-shadow:0 6px 20px rgba(17,24,39,.06)}
+h1,h2,h3,h4{color:var(--accent)}
+h2{border-bottom:1px solid var(--line);padding-bottom:6px}
+code{background:#eef2ff;padding:2px 6px;border-radius:4px;font-family:Consolas,monospace}
+pre{background:var(--code-bg);color:var(--code-ink);padding:14px;border-radius:8px;overflow:auto}
+pre code{background:transparent;padding:0}
+hr{border:none;border-top:1px solid var(--line);margin:24px 0}
+.table-wrap{overflow:auto;margin:14px 0}
+.table-wrap table{border-collapse:collapse;width:100%;font-size:14px}
+.table-wrap th,.table-wrap td{border:1px solid var(--line);padding:8px 10px;text-align:left}
+.table-wrap th{background:#f3f4f6}
+ul{padding-left:18px}
+li{margin:4px 0}
+.toc{background:#f8fafc;border:1px dashed var(--line);padding:12px 14px;border-radius:8px;margin:14px 0}
+.toc a{color:var(--accent);text-decoration:none}
+.toc a:hover{text-decoration:underline}
+.section{margin-top:18px}
+</style>
+</head><body>
+<div class='header'><div class='container'><h1>AIPet Backend ????</h1><p>? 0 ?????????????</p></div></div><div class='container'><div class='paper'>
+<div class='toc'><strong>??</strong><ul>
+<li><a href='#aipet-backend-项目开发纪要-学习记录与锚点'>AIPet Backend 项目开发纪要（学习记录与锚点）</a></li>
+<li><a href='#1-项目目标与范围'>1. 项目目标与范围</a></li>
+<li><a href='#2-初始化阶段'>2. 初始化阶段</a></li>
+<li><a href='#3-用户模块构建'>3. 用户模块构建</a></li>
+<li><a href='#4-认证与权限演进'>4. 认证与权限演进</a></li>
+<li><a href='#5-业务模块扩展'>5. 业务模块扩展</a></li>
+<li><a href='#6-前端测试页面构建'>6. 前端测试页面构建</a></li>
+<li><a href='#7-报错与修复过程-关键记录'>7. 报错与修复过程（关键记录）</a></li>
+<li><a href='#8-工程化完善'>8. 工程化完善</a></li>
+<li><a href='#9-当前状态总结'>9. 当前状态总结</a></li>
+<li><a href='#10-后续可继续完善方向-项目锚点'>10. 后续可继续完善方向（项目锚点）</a></li>
+<li><a href='#11-个人学习总结-建议记录点'>11. 个人学习总结（建议记录点）</a></li>
+</ul></div>
+<h1 id='aipet-backend-项目开发纪要-学习记录与锚点'>AIPet Backend 项目开发纪要（学习记录与锚点）</h1>
+<div style="height:10px"></div>
+<p>&gt; 说明：本纪要基于我们实际的开发过程、日志与对话整理，旨在作为学习总结与后续完善的锚点。</p>
+<p>&gt; 时间信息以日志中可见时间为准（如 2026-03-30 ～ 2026-04-05）。若后续有新增功能可继续追加。</p>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='1-项目目标与范围'>1. 项目目标与范围</h2>
+<ul>
+<li>目标：构建一个完整可运行的 Django + DRF + MySQL 后端项目，支持用户、任务、动作、模型与关联关系。</li>
+<li>约束：接口使用 RESTful 风格；响应统一 success/fail；强制登录（除注册/登录）。</li>
+<li>前端联调：提供简单 HTML 页面用于注册、登录、查询、更新与业务联调。</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='2-初始化阶段'>2. 初始化阶段</h2>
+<p><strong>2.1 环境准备</strong></p>
+<ul>
+<li>Python 3.11</li>
+<li>Django 5.2.12 / DRF 3.16.1 / MySQL</li>
+<li>依赖在 <code>requirements.txt</code> 中统一管理。</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>2.2 基础工程搭建</strong></p>
+<ul>
+<li>项目根目录：<code>F:\workspace_Pycharm_git\djangoProject</code></li>
+<li>主工程：<code>aipet_backend</code></li>
+<li>业务应用：<code>app</code> 目录下多个子模块</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>2.3 数据库配置</strong></p>
+<ul>
+<li>使用 MySQL 数据库 <code>aipetdb</code></li>
+<li>在 <code>aipet_backend\settings.py</code> 中配置连接参数</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='3-用户模块构建'>3. 用户模块构建</h2>
+<p><strong>3.1 用户模型设计</strong></p>
+<ul>
+<li><code>user_id</code> 主键</li>
+<li><code>user_phone_number</code> 手机号（唯一）</li>
+<li><code>user_password</code> 密码（哈希存储）</li>
+<li><code>user_name</code> 用户名（自动生成）</li>
+<li><code>user_profile_picture</code> 头像字段</li>
+<li><code>user_mail_address</code> 邮箱（弃用但保留字段）</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>3.2 注册逻辑</strong></p>
+<ul>
+<li>仅支持手机号注册</li>
+<li>必填：手机号、密码、密码确认、手机验证码（占位）</li>
+<li>注册成功自动生成用户名：<code>user_</code> + 随机字母数字</li>
+<li>手机号唯一性校验（数据库唯一约束 + 序列化器校验）</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>3.3 登录逻辑（双模式）</strong></p>
+<ul>
+<li>手机号 + 密码</li>
+<li>手机号 + 验证码（占位校验）</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>3.4 用户查询/更新</strong></p>
+<ul>
+<li>查询：仅允许查询本人信息（权限校验）</li>
+<li>更新：仅允许修改 <code>user_name</code></li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='4-认证与权限演进'>4. 认证与权限演进</h2>
+<p><strong>4.1 JWT 引入</strong></p>
+<ul>
+<li>使用 <code>djangorestframework-simplejwt</code></li>
+<li>登录成功返回 access_token + refresh_token</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>4.2 强制登录</strong></p>
+<ul>
+<li>默认全局需要 Token</li>
+<li>仅注册/登录允许匿名访问</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>4.3 归属权限控制</strong></p>
+<ul>
+<li>统一封装权限逻辑：</li>
+</ul>
+<p>  - <code>OwnedQuerySetMixin</code></p>
+<p>  - <code>OwnedObjectMixin</code></p>
+<p>  - <code>IsOwnerPermission</code></p>
+<ul>
+<li>目的：避免用户修改/查询其他用户的数据</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>4.4 常见权限问题与修复</strong></p>
+<ul>
+<li>Token 对象必须能识别自定义 <code>user_id</code></li>
+<li>修复 <code>user_id</code> 不存在导致的 Token 解析异常</li>
+<li>避免在登录接口中强制 Token 校验</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='5-业务模块扩展'>5. 业务模块扩展</h2>
+<p><strong>5.1 pet_action 动作字典</strong></p>
+<ul>
+<li>新增动作</li>
+<li>查询动作</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>5.2 pet_model 模型字典</strong></p>
+<ul>
+<li>新增模型</li>
+<li>查询模型</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>5.3 user_task 用户任务</strong></p>
+<ul>
+<li>用户创建任务（自动绑定 user_id）</li>
+<li>任务名在同一用户下不可重复</li>
+<li>更新任务：仅允许修改 <code>task_name</code></li>
+<li>查询单个任务 / 查询本人任务列表</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>5.4 user_task_action_relation 任务-动作关系</strong></p>
+<ul>
+<li>独立映射表（多对多）</li>
+<li>绑定 / 解绑动作</li>
+<li>按任务查询动作列表</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='6-前端测试页面构建'>6. 前端测试页面构建</h2>
+<p><strong>6.1 初始测试页面</strong></p>
+<ul>
+<li>注册 / 登录 / 查询 / 修改</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>6.2 统一风格</strong></p>
+<ul>
+<li>页面统一布局、响应区、按钮样式</li>
+<li>增加 localStorage 自动读取 token</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>6.3 业务测试页面扩展</strong></p>
+<ul>
+<li>pet_action 创建/查询</li>
+<li>pet_model 创建/查询</li>
+<li>user_task 创建/查询/更新/列表</li>
+<li>relation 绑定/解绑/查询</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='7-报错与修复过程-关键记录'>7. 报错与修复过程（关键记录）</h2>
+<p><strong>7.1 数据库表不存在</strong></p>
+<ul>
+<li>报错：<code>Table &amp;#x27;xxx&amp;#x27; doesn&amp;#x27;t exist</code></li>
+<li>处理：<code>makemigrations</code> + <code>migrate</code></li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>7.2 默认 auth_user 表</strong></p>
+<ul>
+<li>原因：未使用自定义 User 作为 Django Auth 模型</li>
+<li>处理：保留默认 auth_user，不影响自定义 user 表</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>7.3 JWT 解析异常</strong></p>
+<ul>
+<li>报错：<code>AttributeError: &amp;#x27;User&amp;#x27; object has no attribute &amp;#x27;id&amp;#x27;</code></li>
+<li>原因：SimpleJWT 默认主键字段为 <code>id</code></li>
+<li>修复：设置 <code>USER_ID_FIELD = user_id</code> 并自定义认证类</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>7.4 权限失效问题</strong></p>
+<ul>
+<li>原因：用户查询接口未正确校验归属</li>
+<li>修复：统一权限校验（owner 验证）</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>7.5 编码乱码问题（高频）</strong></p>
+<ul>
+<li>报错：<code>UnicodeDecodeError</code> 或页面显示 <code>???</code></li>
+<li>处理：统一全项目文件 UTF-8，HTML 输出带 BOM</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>7.6 迁移与重复数据冲突</strong></p>
+<ul>
+<li>报错：<code>Duplicate entry</code> / <code>Table already exists</code></li>
+<li>处理：清理测试数据、重新迁移</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='8-工程化完善'>8. 工程化完善</h2>
+<p><strong>8.1 统一响应格式</strong></p>
+<ul>
+<li>所有接口输出：<code>success/fail</code> 结构</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>8.2 请求日志中间件</strong></p>
+<ul>
+<li>输出请求方法、路径、耗时、用户 ID</li>
+<li>文件日志 + 控制台日志</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>8.3 接口文档体系</strong></p>
+<ul>
+<li><code>PROJECT_DOC.md</code> + <code>PROJECT_DOC.html</code></li>
+<li>统一接口输入/输出示例</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='9-当前状态总结'>9. 当前状态总结</h2>
+<ul>
+<li>模型与业务表结构稳定</li>
+<li>JWT 登录可用</li>
+<li>权限校验可用</li>
+<li>前端测试页面齐全</li>
+<li>文档已生成</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='10-后续可继续完善方向-项目锚点'>10. 后续可继续完善方向（项目锚点）</h2>
+<p><strong>10.1 权限细化</strong></p>
+<ul>
+<li>不同角色/权限等级</li>
+<li>资源级别的细粒度控制</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>10.2 日志增强</strong></p>
+<ul>
+<li>增加 request_id</li>
+<li>记录异常堆栈</li>
+<li>统一错误追踪</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>10.3 测试体系</strong></p>
+<ul>
+<li>单元测试（model/serializer/view）</li>
+<li>接口测试（pytest + API 测试）</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>10.4 安全与稳定性</strong></p>
+<ul>
+<li>验证码真实接入</li>
+<li>Token 黑名单机制</li>
+<li>防刷机制</li>
+</ul>
+<div style="height:10px"></div>
+<p><strong>10.5 文档自动化</strong></p>
+<ul>
+<li>自动生成 Swagger / OpenAPI</li>
+<li>前端联调用例清单</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<h2 id='11-个人学习总结-建议记录点'>11. 个人学习总结（建议记录点）</h2>
+<ul>
+<li>Django/DRF 结构理解</li>
+<li>权限与认证的演进过程</li>
+<li>数据库迁移与错误修复经验</li>
+<li>UTF-8 编码问题的排查与修复</li>
+<li>前后端联调流程</li>
+</ul>
+<div style="height:10px"></div>
+<hr>
+<div style="height:10px"></div>
+<p>&gt; 该文档建议随项目持续更新，每次新增功能都追加「新增/变更」小节，形成完整迭代记录。</p>
+</div></div></body></html>
