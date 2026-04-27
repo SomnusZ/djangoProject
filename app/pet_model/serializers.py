@@ -33,6 +33,19 @@ class CreatePetModelSerializer(serializers.ModelSerializer):
         )
 
 
+class UpdatePetModelSerializer(serializers.ModelSerializer):
+    """
+    修改宠物模型序列化器。
+    仅允许修改 pet_model_name。
+    """
+
+    class Meta:
+        model = PetModel
+        fields = (
+            'pet_model_name',
+        )
+
+
 class DirModelQuerySerializer(serializers.Serializer):
     """
     查询模型信息序列化器。

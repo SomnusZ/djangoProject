@@ -1,0 +1,103 @@
+// =============================================================================
+// user_wealth_relation.proto  —  用户货币资产关联模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/user-wealth/bindWealthToUser/      （绑定货币资产到用户）
+//   POST /api/user-wealth/unbindWealthFromUser/  （解绑货币资产与用户）
+//   GET  /api/user-wealth/dirWealthListByUser/   （查询用户名下货币资产列表）
+//
+// 编译方式（生成 user_wealth_relation_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/user_wealth_relation.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// WealthRelationInfo —— 用户货币资产关联记录信息。
+// 在绑定成功和列表查询中均返回此结构。
+message WealthRelationInfo {
+  int32  relation_id    = 1; // 关联记录主键，数据库自增 ID
+  int32  user_id        = 2; // 关联的用户 ID
+  int32  wealth_id      = 3; // 关联的货币资产 ID
+  string wealth_name    = 4; // 货币资产名称，冗余字段，方便客户端直接展示
+  int32  wealth_amount  = 5; // 当前用户拥有该货币的数量，默认 0
+}
+
+// WealthUnbindInfo —— 解绑成功后返回的确认信息（无 relation_id，因记录已删除）。
+message WealthUnbindInfo {
+  int32 wealth_id = 1; // 被解绑的货币资产 ID
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// BindWealthResponse —— 绑定货币资产到用户的响应格式。
+// 对应接口：POST /api/user-wealth/bindWealthToUser/
+message BindWealthResponse {
+  string            result  = 1; // "success" 或 "fail"
+  bool              success = 2; // true / false
+  WealthRelationInfo data   = 3; // 绑定成功时返回的关联记录；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："绑定成功"、"该用户已绑定该货币资产"
+    ValidationError error = 5; // 字段级校验错误
+  }
+}
+
+// UnbindWealthResponse —— 解绑货币资产与用户的响应格式。
+// 对应接口：POST /api/user-wealth/unbindWealthFromUser/
+message UnbindWealthResponse {
+  string          result  = 1; // "success" 或 "fail"
+  bool            success = 2; // true / false
+  WealthUnbindInfo data   = 3; // 解绑成功时返回确认信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："解绑成功"、"关联不存在"
+    ValidationError error = 5; // 字段级校验错误
+  }
+}
+
+// WealthRelationListResponse —— 查询用户货币资产列表的响应格式。
+// 对应接口：GET /api/user-wealth/dirWealthListByUser/
+// data 为 repeated，可包含 0 到多条关联记录。
+message WealthRelationListResponse {
+  string                    result  = 1; // "success" 或 "fail"
+  bool                      success = 2; // true / false
+  repeated WealthRelationInfo data  = 3; // 货币资产关联列表，可为空列表
+
+  oneof message_content {
+    string          text  = 4; // 例："查询成功"
+    ValidationError error = 5; // 保留以保持结构一致性
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// BindWealthRequest —— 绑定货币资产到用户的请求体。
+// 对应接口：POST /api/user-wealth/bindWealthToUser/
+message BindWealthRequest {
+  int32 wealth_id = 1; // 要绑定的货币资产 ID，必须已存在
+}
+
+// UnbindWealthRequest —— 解绑货币资产与用户的请求体。
+// 对应接口：POST /api/user-wealth/unbindWealthFromUser/
+message UnbindWealthRequest {
+  int32 wealth_id = 1; // 要解绑的货币资产 ID
+}
+
+// GET dirWealthListByUser 无需请求体，用户身份从 JWT 中自动获取。

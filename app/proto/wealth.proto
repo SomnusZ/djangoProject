@@ -1,0 +1,68 @@
+// =============================================================================
+// wealth.proto  —  货币资产模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/wealth/createWealth/   （创建货币资产）
+//   PUT  /api/wealth/updateWealth/   （修改货币资产名称）
+//   GET  /api/wealth/dirWealth/      （查询货币资产信息）
+//
+// 编译方式（生成 wealth_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/wealth.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// WealthInfo —— 货币资产基础信息。
+// 在创建、修改和查询响应中均返回此结构。
+message WealthInfo {
+  int32  wealth_id   = 1; // 货币资产主键，数据库自增 ID
+  string wealth_name = 2; // 货币资产名称，如"金币"、"钻石"，全局唯一
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// WealthResponse —— 创建 / 修改 / 查询货币资产接口的统一响应格式。
+message WealthResponse {
+  string     result  = 1; // "success" 或 "fail"
+  bool       success = 2; // true / false
+  WealthInfo data    = 3; // 操作成功时返回的货币资产信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 纯文本说明，例："创建成功"、"货币资产不存在"
+    ValidationError error = 5; // 字段级校验错误，例：{"wealth_name": ["该货币资产名称已存在"]}
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// CreateWealthRequest —— 创建货币资产请求体。
+// 对应接口：POST /api/wealth/createWealth/
+message CreateWealthRequest {
+  string wealth_name = 1; // 货币资产名称，必填，全局唯一
+}
+
+// UpdateWealthRequest —— 修改货币资产请求体。
+// 对应接口：PUT /api/wealth/updateWealth/
+message UpdateWealthRequest {
+  int32  wealth_id   = 1; // 要修改的货币资产 ID，必填，用于定位记录
+  string wealth_name = 2; // 新名称，必填
+}
+
+// GET dirWealth 通过 URL Query String 传参（?wealth_id=1），无请求体消息。

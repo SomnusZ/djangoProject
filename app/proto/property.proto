@@ -1,0 +1,68 @@
+// =============================================================================
+// property.proto  —  属性模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/property/createProperty/   （创建属性）
+//   PUT  /api/property/updateProperty/   （修改属性名称）
+//   GET  /api/property/dirProperty/      （查询属性信息）
+//
+// 编译方式（生成 property_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/property.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// PropertyInfo —— 属性基础信息。
+// 在创建、修改和查询响应中均返回此结构。
+message PropertyInfo {
+  int32  property_id   = 1; // 属性主键，数据库自增 ID
+  string property_name = 2; // 属性名称，如"力量"、"敏捷"、"智力"，全局唯一
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// PropertyResponse —— 创建 / 修改 / 查询属性接口的统一响应格式。
+message PropertyResponse {
+  string       result  = 1; // "success" 或 "fail"
+  bool         success = 2; // true / false
+  PropertyInfo data    = 3; // 操作成功时返回的属性信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 纯文本说明，例："创建成功"、"属性不存在"
+    ValidationError error = 5; // 字段级校验错误，例：{"property_name": ["该属性名称已存在"]}
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// CreatePropertyRequest —— 创建属性请求体。
+// 对应接口：POST /api/property/createProperty/
+message CreatePropertyRequest {
+  string property_name = 1; // 属性名称，必填，全局唯一
+}
+
+// UpdatePropertyRequest —— 修改属性请求体。
+// 对应接口：PUT /api/property/updateProperty/
+message UpdatePropertyRequest {
+  int32  property_id   = 1; // 要修改的属性 ID，必填，用于定位记录
+  string property_name = 2; // 新名称，必填
+}
+
+// GET dirProperty 通过 URL Query String 传参（?property_id=1），无请求体消息。

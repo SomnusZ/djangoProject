@@ -31,6 +31,10 @@ class User(models.Model):
     user_password = models.CharField(max_length=128, verbose_name='密码')
     # 邮箱：弃用（允许为空，保留字段兼容历史数据）
     user_mail_address = models.EmailField(unique=True, db_index=True, blank=True, null=True, verbose_name='邮箱')
+    # 用户状态：存储整型值，后续通过字典项配置含义（如 0=正常 1=禁用 2=注销 等）
+    user_status = models.IntegerField(default=0, blank=True, null=True, verbose_name='用户状态')
+    # 用户角色：0=普通用户  1=管理员，后续可按需扩展（如 2=超级管理员）
+    user_role = models.IntegerField(default=0, blank=True, null=True, verbose_name='用户角色')
 
     class Meta:
         # 指定数据库表名

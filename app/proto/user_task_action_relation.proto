@@ -1,0 +1,111 @@
+// =============================================================================
+// user_task_action_relation.proto  —  任务动作关联模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/task-actions/bindActionToTask/      （绑定动作到任务）
+//   POST /api/task-actions/unbindActionFromTask/  （解绑动作与任务）
+//   GET  /api/task-actions/dirActionListByTask/   （查询任务关联的动作列表）
+//
+// 编译方式（生成 user_task_action_relation_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/user_task_action_relation.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// RelationInfo —— 绑定成功后返回的关联记录信息。
+message RelationInfo {
+  int32 relation_id   = 1; // 关联记录主键，数据库自增 ID
+  int32 user_task_id  = 2; // 关联的任务 ID
+  int32 pet_action_id = 3; // 关联的动作 ID
+}
+
+// UnbindInfo —— 解绑成功后返回的确认信息（无 relation_id，因记录已删除）。
+message UnbindInfo {
+  int32 user_task_id  = 1; // 解绑的任务 ID
+  int32 pet_action_id = 2; // 解绑的动作 ID
+}
+
+// ActionBriefInfo —— 动作简要信息，用于列表展示。
+// 对应 dirActionListByTask 中每个列表元素的结构。
+message ActionBriefInfo {
+  int32  pet_action_id   = 1; // 动作 ID
+  string pet_action_name = 2; // 动作名称
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// BindResponse —— 绑定动作到任务的响应格式。
+// 对应接口：POST /api/task-actions/bindActionToTask/
+message BindResponse {
+  string       result  = 1; // "success" 或 "fail"
+  bool         success = 2; // true / false
+  RelationInfo data    = 3; // 绑定成功时返回的关联记录；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："绑定成功"、"动作已绑定到该任务"
+    ValidationError error = 5; // 字段级校验错误，例：{"pet_action_id": ["该字段是必填项"]}
+  }
+}
+
+// UnbindResponse —— 解绑动作与任务的响应格式。
+// 对应接口：POST /api/task-actions/unbindActionFromTask/
+// 解绑成功时 data 中不含 relation_id（原记录已删除），只返回操作涉及的 ID 对。
+message UnbindResponse {
+  string     result  = 1; // "success" 或 "fail"
+  bool       success = 2; // true / false
+  UnbindInfo data    = 3; // 解绑成功时返回确认信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："解绑成功"、"关联关系不存在"
+    ValidationError error = 5; // 字段级校验错误
+  }
+}
+
+// ActionListResponse —— 查询任务关联动作列表的响应格式。
+// 对应接口：GET /api/task-actions/dirActionListByTask/
+// data 为 repeated，可包含 0 到多条动作记录。
+message ActionListResponse {
+  string                  result  = 1; // "success" 或 "fail"
+  bool                    success = 2; // true / false
+  repeated ActionBriefInfo data   = 3; // 动作列表，可为空列表
+
+  oneof message_content {
+    string          text  = 4; // 例："查询成功"
+    ValidationError error = 5; // 保留以保持结构一致性
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// BindActionRequest —— 绑定动作到任务的请求体。
+// 对应接口：POST /api/task-actions/bindActionToTask/
+message BindActionRequest {
+  int32 user_task_id  = 1; // 目标任务 ID，必须属于当前登录用户
+  int32 pet_action_id = 2; // 要绑定的动作 ID，必须已存在
+}
+
+// UnbindActionRequest —— 解绑动作与任务的请求体。
+// 对应接口：POST /api/task-actions/unbindActionFromTask/
+message UnbindActionRequest {
+  int32 user_task_id  = 1; // 目标任务 ID，必须属于当前登录用户
+  int32 pet_action_id = 2; // 要解绑的动作 ID
+}
+
+// GET dirActionListByTask 通过 URL Query String 传参（?user_task_id=1），无请求体消息。

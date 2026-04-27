@@ -1,0 +1,63 @@
+// =============================================================================
+// pet_model.proto  —  宠物模型模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/pet-models/createModel/   （创建宠物模型）
+//   GET  /api/pet-models/dirModel/      （查询宠物模型信息）
+//
+// 编译方式（生成 pet_model_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/pet_model.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// PetModelInfo —— 宠物模型基础信息。
+// 在创建和查询响应中均返回此结构。
+message PetModelInfo {
+  int32  pet_model_id   = 1; // 模型主键，数据库自增 ID
+  string pet_model_name = 2; // 模型名称，如 "cat" / "dog"
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// PetModelResponse —— 创建模型 / 查询模型接口的统一响应格式。
+// 对应接口：
+//   POST /api/pet-models/createModel/
+//   GET  /api/pet-models/dirModel/
+message PetModelResponse {
+  string       result  = 1; // "success" 或 "fail"
+  bool         success = 2; // true / false
+  PetModelInfo data    = 3; // 操作成功时返回的模型信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 纯文本说明，例："创建成功"、"模型不存在"
+    ValidationError error = 5; // 字段级校验错误，例：{"pet_model_name": ["该字段是必填项"]}
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// CreateModelRequest —— 创建宠物模型请求体。
+// 对应接口：POST /api/pet-models/createModel/
+message CreateModelRequest {
+  string pet_model_name = 1; // 模型名称，必填
+}
+
+// GET dirModel 通过 URL Query String 传参（?pet_model_id=1），无请求体消息。

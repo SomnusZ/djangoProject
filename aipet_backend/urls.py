@@ -29,6 +29,26 @@ urlpatterns = [
     path('api/actions/', include('app.pet_action.urls')),
     # 任务动作关系接口
     path('api/task-actions/', include('app.user_task_action_relation.urls')),
+    # 货币资产接口
+    path('api/wealth/', include('app.wealth.urls')),
+    # 用户货币资产关联接口
+    path('api/user-wealth/', include('app.user_wealth_relation.urls')),
+    # 玩法任务接口
+    path('api/playtask/', include('app.playtask.urls')),
+    # 用户玩法任务关联接口
+    path('api/user-playtask/', include('app.user_playtask_relation.urls')),
+    # 成就接口
+    path('api/achievement/', include('app.achievement.urls')),
+    # 用户成就关联接口
+    path('api/user-achievement/', include('app.user_achievement_relation.urls')),
+    # 家具接口
+    path('api/furniture/', include('app.furniture.urls')),
+    # 用户家具关联接口
+    path('api/user-furniture/', include('app.user_furniture_relation.urls')),
+    # 属性接口
+    path('api/property/', include('app.property.urls')),
+    # 用户属性关联接口
+    path('api/user-property/', include('app.user_property_relation.urls')),
 ]
 
 # 开发环境下提供媒体文件访问

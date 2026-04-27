@@ -34,12 +34,20 @@ class UserViewSet(viewsets.GenericViewSet):
         权限控制：
         - 注册 / 登录允许匿名访问
         - 其他接口必须携带有效 Token
+        - 若 @action 上声明了 permission_classes，优先使用（支持未来管理员接口扩展）
         """
-        # 优先按 action 名称判断（DRF 会自动设置 self.action）
+        # 匿名接口显式豁免（优先级最高）
         if self.action == 'create_user':
             return [AllowAny()]
         if self.action == 'dir_user' and self.request.method == 'POST':
             return [AllowAny()]
+        # 读取 @action 上声明的 permission_classes（如 IsAdminUser）
+        action_method = getattr(self, self.action, None)
+        if action_method:
+            action_perms = getattr(action_method, 'kwargs', {}).get('permission_classes')
+            if action_perms is not None:
+                return [perm() for perm in action_perms]
+        # 默认：登录即可
         return [IsAuthenticated()]
 
     # 注册接口允许匿名访问

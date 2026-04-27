@@ -38,6 +38,26 @@ INSTALLED_APPS = [
     'app.pet_action.apps.PetActionConfig',
     # 任务动作关系应用
     'app.user_task_action_relation.apps.UserTaskActionRelationConfig',
+    # 货币资产应用
+    'app.wealth.apps.WealthConfig',
+    # 用户货币资产关联应用
+    'app.user_wealth_relation.apps.UserWealthRelationConfig',
+    # 玩法任务应用
+    'app.playtask.apps.PlaytaskConfig',
+    # 用户玩法任务关联应用
+    'app.user_playtask_relation.apps.UserPlaytaskRelationConfig',
+    # 成就应用
+    'app.achievement.apps.AchievementConfig',
+    # 用户成就关联应用
+    'app.user_achievement_relation.apps.UserAchievementRelationConfig',
+    # 家具应用
+    'app.furniture.apps.FurnitureConfig',
+    # 用户家具关联应用
+    'app.user_furniture_relation.apps.UserFurnitureRelationConfig',
+    # 属性应用
+    'app.property.apps.PropertyConfig',
+    # 用户属性关联应用
+    'app.user_property_relation.apps.UserPropertyRelationConfig',
 ]
 
 # 中间件
@@ -122,11 +142,23 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
     'DEFAULT_RENDERER_CLASSES': [
+        # Keep JSON as default for backward compatibility.
+        # Existing frontend/test pages require JSON and should not break.
         'rest_framework.renderers.JSONRenderer',
+        # Add protobuf output when client sends Accept: application/x-protobuf.
+        # This is additive, not a replacement:
+        # - No business view changes required.
+        # - Same response payload is encoded into protobuf envelope.
+        # - If client does not request protobuf, JSON response remains unchanged.
+        'app.protobuf.renderer.ProtobufRenderer',
     ],
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
         'rest_framework.parsers.MultiPartParser',
+        # Accept Content-Type: application/x-protobuf request bodies.
+        # Deserializes binary proto to dict; views receive it via request.data
+        # with no changes required.
+        'app.protobuf.parser.ProtobufParser',
     ],
 }
 

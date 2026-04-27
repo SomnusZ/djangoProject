@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AIPet 接口测试中心</title>
+  <style>
+    :root {
+      --bg-1:#0f172a; --bg-2:#1e293b;
+      --card:rgba(255,255,255,.07); --card-border:rgba(255,255,255,.14);
+      --text:#e2e8f0; --muted:#94a3b8;
+      --accent:#22c55e; --accent-2:#38bdf8; --accent-3:#a78bfa;
+      --danger:#f97316; --shadow:0 20px 50px rgba(0,0,0,.35);
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:"Source Han Sans SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+      color:var(--text);
+      background:radial-gradient(1400px 700px at 5% 5%,rgba(56,189,248,.18),transparent 55%),
+                 radial-gradient(1400px 700px at 95% 15%,rgba(34,197,94,.18),transparent 50%),
+                 radial-gradient(800px 600px at 50% 80%,rgba(167,139,250,.12),transparent 60%),
+                 linear-gradient(135deg,var(--bg-1),var(--bg-2));
+      min-height:100vh; padding:48px 20px;
+    }
+    .shell { width:min(1200px,100%); margin:0 auto; display:grid; gap:40px; }
+
+    /* Hero */
+    .hero { text-align:center; display:grid; gap:12px; }
+    .hero-badge {
+      display:inline-flex; align-items:center; gap:8px; justify-content:center;
+      background:rgba(56,189,248,.1); color:var(--accent-2);
+      padding:8px 16px; border-radius:999px; font-size:13px;
+      border:1px solid rgba(56,189,248,.3); margin:0 auto;
+    }
+    .hero h1 { font-size:clamp(32px,5vw,52px); margin:0; letter-spacing:-.02em; }
+    .hero h1 span { color:var(--accent); }
+    .hero p { margin:0; color:var(--muted); font-size:16px; }
+    .token-bar {
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;
+      background:rgba(255,255,255,.05); border:1px solid var(--card-border);
+      border-radius:12px; padding:12px 18px; font-size:13px;
+    }
+    .token-bar label { color:var(--muted); white-space:nowrap; }
+    .token-bar input {
+      flex:1; min-width:200px; max-width:420px;
+      padding:8px 12px; border-radius:8px; border:1px solid rgba(255,255,255,.15);
+      background:rgba(15,23,42,.7); color:var(--text); font-size:13px; outline:none;
+      font-family:monospace;
+    }
+    .token-bar input:focus { border-color:var(--accent-2); }
+    .token-status { font-size:12px; color:var(--muted); }
+    .token-status.ok { color:var(--accent); }
+    .btn-sm {
+      padding:8px 14px; border-radius:8px; border:none; cursor:pointer; font-size:13px;
+      background:linear-gradient(135deg,var(--accent),#16a34a); color:#0b1220; font-weight:600;
+      transition:transform .15s;
+    }
+    .btn-sm:hover { transform:translateY(-1px); }
+    .btn-ghost {
+      padding:8px 14px; border-radius:8px; border:1px solid var(--card-border);
+      background:transparent; color:var(--text); cursor:pointer; font-size:13px;
+    }
+
+    /* Section */
+    .section-title {
+      font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+      color:var(--muted); padding-bottom:8px;
+      border-bottom:1px solid var(--card-border);
+    }
+
+    /* Module grid */
+    .modules { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+    .mod-card {
+      background:var(--card); border:1px solid var(--card-border);
+      border-radius:16px; padding:20px 22px;
+      box-shadow:var(--shadow); backdrop-filter:blur(12px);
+      text-decoration:none; color:inherit;
+      display:grid; gap:10px;
+      transition:transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+      cursor:pointer;
+    }
+    .mod-card:hover {
+      transform:translateY(-3px);
+      border-color:rgba(255,255,255,.28);
+      box-shadow:0 28px 60px rgba(0,0,0,.4);
+    }
+    .mod-header { display:flex; align-items:center; gap:12px; }
+    .mod-icon {
+      width:40px; height:40px; border-radius:10px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:20px; flex-shrink:0;
+    }
+    .mod-name { font-size:16px; font-weight:600; }
+    .mod-en { font-size:11px; color:var(--muted); margin-top:2px; font-family:monospace; }
+    .mod-tabs { display:flex; flex-wrap:wrap; gap:6px; }
+    .tab-chip {
+      font-size:11px; padding:3px 8px; border-radius:6px;
+      background:rgba(255,255,255,.08); color:var(--muted);
+      border:1px solid rgba(255,255,255,.1);
+    }
+    .mod-arrow {
+      align-self:flex-end; justify-self:flex-end;
+      font-size:18px; color:var(--muted); transition:color .2s, transform .2s;
+    }
+    .mod-card:hover .mod-arrow { color:var(--accent); transform:translateX(4px); }
+
+    /* Color variants */
+    .c-blue  { background:rgba(56,189,248,.15);  }
+    .c-green { background:rgba(34,197,94,.15);   }
+    .c-purple{ background:rgba(167,139,250,.15); }
+    .c-orange{ background:rgba(249,115,22,.15);  }
+    .c-pink  { background:rgba(236,72,153,.15);  }
+    .c-teal  { background:rgba(20,184,166,.15);  }
+    .c-amber { background:rgba(245,158,11,.15);  }
+    .c-red   { background:rgba(239,68,68,.15);   }
+    .c-indigo{ background:rgba(99,102,241,.15);  }
+
+    footer { text-align:center; color:var(--muted); font-size:12px; padding-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+
+    <div class="hero">
+      <div class="hero-badge">AIPet Backend · 接口测试中心</div>
+      <h1>接口 <span>测试</span> 中心</h1>
+      <p>选择模块进入对应测试页面，所有接口支持 JSON / Protobuf 双向格式切换</p>
+
+      <div class="token-bar">
+        <label>access_token</label>
+        <input type="text" id="tokenInput" placeholder="粘贴 token，或登录后自动写入" />
+        <button class="btn-sm" onclick="saveToken()">保存到 localStorage</button>
+        <button class="btn-ghost" onclick="clearToken()">清除</button>
+        <span class="token-status" id="tokenStatus">—</span>
+      </div>
+    </div>
+
+    <!-- 基础模块 -->
+    <div>
+      <div class="section-title">基础模块</div>
+      <div class="modules" style="margin-top:14px;">
+
+        <a class="mod-card" href="/test/user/">
+          <div class="mod-header">
+            <div class="mod-icon c-blue">👤</div>
+            <div>
+              <div class="mod-name">用户</div>
+              <div class="mod-en">user · /api/users/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">注册</span>
+            <span class="tab-chip">登录</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">修改</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+        <a class="mod-card" href="/test/user_task/">
+          <div class="mod-header">
+            <div class="mod-icon c-green">📋</div>
+            <div>
+              <div class="mod-name">用户任务</div>
+              <div class="mod-en">user_task · /api/models/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">修改</span>
+            <span class="tab-chip">列表</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+        <a class="mod-card" href="/test/pet_model/">
+          <div class="mod-header">
+            <div class="mod-icon c-purple">🐾</div>
+            <div>
+              <div class="mod-name">宠物模型</div>
+              <div class="mod-en">pet_model · /api/pet-models/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+      </div>
+    </div>
+
+    <!-- 游戏资产模块 -->
+    <div>
+      <div class="section-title">游戏资产模块</div>
+      <div class="modules" style="margin-top:14px;">
+
+        <a class="mod-card" href="/test/pet_action/">
+          <div class="mod-header">
+            <div class="mod-icon c-orange">⚡</div>
+            <div>
+              <div class="mod-name">宠物动作</div>
+              <div class="mod-en">pet_action · /api/actions/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">绑定</span>
+            <span class="tab-chip">解绑</span>
+            <span class="tab-chip">列表</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+        <a class="mod-card" href="/test/achievement/">
+          <div class="mod-header">
+            <div class="mod-icon c-amber">🏆</div>
+            <div>
+              <div class="mod-name">成就</div>
+              <div class="mod-en">achievement · /api/achievement/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">修改</span>
+            <span class="tab-chip">绑定</span>
+            <span class="tab-chip">解绑</span>
+            <span class="tab-chip">列表</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+        <a class="mod-card" href="/test/furniture/">
+          <div class="mod-header">
+            <div class="mod-icon c-teal">🛋️</div>
+            <div>
+              <div class="mod-name">家具</div>
+              <div class="mod-en">furniture · /api/furniture/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">修改</span>
+            <span class="tab-chip">绑定</span>
+            <span class="tab-chip">解绑</span>
+            <span class="tab-chip">列表</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+        <a class="mod-card" href="/test/playtask/">
+          <div class="mod-header">
+            <div class="mod-icon c-pink">🎮</div>
+            <div>
+              <div class="mod-name">玩法任务</div>
+              <div class="mod-en">playtask · /api/playtask/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">修改</span>
+            <span class="tab-chip">绑定</span>
+            <span class="tab-chip">解绑</span>
+            <span class="tab-chip">列表</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+        <a class="mod-card" href="/test/property/">
+          <div class="mod-header">
+            <div class="mod-icon c-indigo">🎒</div>
+            <div>
+              <div class="mod-name">道具</div>
+              <div class="mod-en">property · /api/property/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">修改</span>
+            <span class="tab-chip">绑定</span>
+            <span class="tab-chip">解绑</span>
+            <span class="tab-chip">列表</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+        <a class="mod-card" href="/test/wealth/">
+          <div class="mod-header">
+            <div class="mod-icon c-red">💰</div>
+            <div>
+              <div class="mod-name">货币资产</div>
+              <div class="mod-en">wealth · /api/wealth/</div>
+            </div>
+          </div>
+          <div class="mod-tabs">
+            <span class="tab-chip">创建</span>
+            <span class="tab-chip">查询</span>
+            <span class="tab-chip">修改</span>
+            <span class="tab-chip">绑定</span>
+            <span class="tab-chip">解绑</span>
+            <span class="tab-chip">列表</span>
+          </div>
+          <div class="mod-arrow">→</div>
+        </a>
+
+      </div>
+    </div>
+
+    <footer>AIPet Backend · Django 5.2 + DRF · JWT 认证 · Protobuf 双向格式</footer>
+  </div>
+
+  <script>
+    const tokenInput  = document.getElementById("tokenInput");
+    const tokenStatus = document.getElementById("tokenStatus");
+
+    function refreshStatus() {
+      const t = localStorage.getItem("access_token");
+      if (t) {
+        tokenInput.value = t;
+        tokenStatus.textContent = "已从 localStorage 读取";
+        tokenStatus.className = "token-status ok";
+      } else {
+        tokenStatus.textContent = "未设置";
+        tokenStatus.className = "token-status";
+      }
+    }
+
+    function saveToken() {
+      const v = tokenInput.value.trim();
+      if (!v) { tokenStatus.textContent = "token 不能为空"; tokenStatus.className = "token-status"; return; }
+      localStorage.setItem("access_token", v);
+      tokenStatus.textContent = "✓ 已保存";
+      tokenStatus.className = "token-status ok";
+    }
+
+    function clearToken() {
+      localStorage.removeItem("access_token");
+      tokenInput.value = "";
+      tokenStatus.textContent = "已清除";
+      tokenStatus.className = "token-status";
+    }
+
+    refreshStatus();
+  </script>
+</body>
+</html>

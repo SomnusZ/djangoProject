@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>家具模块测试</title>
+  <style>
+    :root {
+      --bg-1:#0f172a; --bg-2:#1e293b;
+      --card:rgba(255,255,255,.08); --card-border:rgba(255,255,255,.18);
+      --text:#e2e8f0; --muted:#94a3b8;
+      --accent:#22c55e; --accent-2:#38bdf8; --accent-3:#a78bfa;
+      --danger:#f97316; --shadow:0 20px 50px rgba(0,0,0,.35);
+    }
+    * { box-sizing:border-box; }
+    body {
+      margin:0;
+      font-family:"Source Han Sans SC","Microsoft YaHei","Noto Sans SC",sans-serif;
+      color:var(--text);
+      background:radial-gradient(1200px 600px at 10% 10%,rgba(56,189,248,.2),transparent 60%),
+                 radial-gradient(1200px 600px at 90% 20%,rgba(34,197,94,.2),transparent 55%),
+                 linear-gradient(135deg,var(--bg-1),var(--bg-2));
+      min-height:100vh; padding:32px 16px;
+    }
+    .shell { width:min(1100px,100%); margin:0 auto; display:grid; gap:24px; }
+    .hero { display:grid; gap:8px; }
+    .hero h1 { font-size:clamp(24px,3vw,36px); margin:0; }
+    .hero p { margin:0; color:var(--muted); }
+    .badge {
+      display:inline-flex; align-items:center; gap:6px;
+      background:rgba(56,189,248,.15); color:var(--accent-2);
+      padding:6px 10px; border-radius:999px; font-size:12px;
+      border:1px solid rgba(56,189,248,.35);
+    }
+    .tab-nav {
+      display:flex; gap:6px; flex-wrap:wrap;
+      background:rgba(15,23,42,.6); border:1px solid var(--card-border);
+      border-radius:14px; padding:6px;
+    }
+    .tab-btn {
+      padding:9px 18px; border-radius:10px; border:none;
+      background:transparent; color:var(--muted);
+      font-size:14px; cursor:pointer; transition:all .2s ease;
+    }
+    .tab-btn:hover { color:var(--text); background:rgba(255,255,255,.06); }
+    .tab-btn.active { background:linear-gradient(135deg,var(--accent),#16a34a); color:#0b1220; font-weight:600; }
+    .tab-sub { font-size:11px; opacity:.7; margin-left:4px; }
+    .panel { display:none; }
+    .panel.active { display:block; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; }
+    .card {
+      background:var(--card); border:1px solid var(--card-border);
+      border-radius:16px; padding:22px;
+      box-shadow:var(--shadow); backdrop-filter:blur(12px);
+    }
+    .card h2 { margin-top:0; font-size:18px; }
+    .card-meta { font-size:12px; color:var(--muted); margin-bottom:16px; }
+    form { display:grid; gap:14px; }
+    label { display:grid; gap:6px; font-size:13px; color:var(--muted); }
+    .field { position:relative; }
+    input {
+      width:100%; padding:11px 14px; border-radius:10px;
+      border:1px solid transparent; background:rgba(15,23,42,.7);
+      color:var(--text); font-size:14px; outline:none;
+      transition:border .2s ease, box-shadow .2s ease;
+    }
+    input:focus { border-color:var(--accent-2); box-shadow:0 0 0 3px rgba(56,189,248,.2); }
+    .hint { font-size:12px; color:var(--muted); line-height:1.5; }
+    .info-note {
+      background:rgba(56,189,248,.08); border:1px solid rgba(56,189,248,.25);
+      border-radius:10px; padding:10px 14px; font-size:12px; color:#7dd3fc;
+    }
+    .divider { height:1px; background:var(--card-border); margin:4px 0; opacity:.5; }
+    .format-group { display:grid; gap:6px; }
+    .format-title { font-size:12px; color:var(--muted); font-weight:600; }
+    .mode { display:flex; gap:16px; }
+    .mode label { display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--text); font-size:13px; }
+    .mode input[type=radio] { accent-color:var(--accent-3); width:auto; }
+    .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    button[type=submit] {
+      padding:11px 20px; border-radius:10px; border:none;
+      background:linear-gradient(135deg,var(--accent),#16a34a);
+      color:#0b1220; font-weight:600; cursor:pointer;
+      transition:transform .2s ease, box-shadow .2s ease;
+    }
+    button[type=submit]:hover { transform:translateY(-1px); box-shadow:0 10px 20px rgba(34,197,94,.3); }
+    .ghost {
+      padding:11px 16px; border-radius:10px; border:1px solid var(--card-border);
+      background:transparent; color:var(--text); cursor:pointer;
+    }
+    .status { min-height:20px; font-size:13px; color:var(--muted); }
+    .status.ok { color:var(--accent); }
+    .status.err { color:var(--danger); }
+    .req-panel { display:none; margin-bottom:16px; }
+    .req-panel h3 { margin:0 0 8px; font-size:13px; color:#c4b5fd; }
+    .req-meta { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-bottom:8px; }
+    .req-meta code { color:#c4b5fd; background:rgba(167,139,250,.15); border:1px solid rgba(167,139,250,.3); border-radius:8px; padding:2px 8px; }
+    .meta { display:grid; gap:8px; margin-bottom:12px; font-size:12px; color:var(--muted); }
+    .meta code { color:#bae6fd; background:rgba(56,189,248,.15); border:1px solid rgba(56,189,248,.3); border-radius:8px; padding:2px 8px; }
+    .section-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+    .download-link { display:none; color:#86efac; font-size:12px; text-decoration:underline; cursor:pointer; }
+    pre {
+      margin:0; padding:14px; border-radius:12px;
+      background:rgba(15,23,42,.8); color:#e2e8f0;
+      font-size:12px; max-height:320px; overflow:auto;
+      border:1px solid rgba(148,163,184,.2);
+      line-height:1.45; white-space:pre-wrap; word-break:break-word;
+    }
+    .admin-tag { display:inline-flex; align-items:center; gap:4px; color:#fdba74; background:rgba(249,115,22,.12); border:1px solid rgba(249,115,22,.3); border-radius:6px; padding:1px 7px; font-size:11px; font-weight:600; vertical-align:middle; margin-left:6px; }
+    @media (max-width:640px) { .actions { flex-direction:column; align-items:stretch; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="hero">
+      <span class="badge">家具模块（请求 + 响应 Protobuf 双向测试）</span>
+      <h1>家具接口测试</h1>
+      <p>创建 · 查询 · 修改 · 家具库 · 绑定 · 解绑 · 列表</p>
+    </div>
+
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="create">创建<span class="tab-sub">POST createFurniture</span></button>
+      <button class="tab-btn" data-tab="query">查询<span class="tab-sub">GET dirFurniture</span></button>
+      <button class="tab-btn" data-tab="update">修改<span class="tab-sub">PUT updateFurniture</span></button>
+      <button class="tab-btn" data-tab="alllist">家具库<span class="tab-sub">GET dirFurnitureList</span></button>
+      <button class="tab-btn" data-tab="bind">绑定<span class="tab-sub">POST bindFurnitureToUser</span></button>
+      <button class="tab-btn" data-tab="unbind">解绑<span class="tab-sub">POST unbindFurnitureFromUser</span></button>
+      <button class="tab-btn" data-tab="list">列表<span class="tab-sub">GET dirFurnitureListByUser</span></button>
+    </nav>
+
+    <!-- ===== 创建 ===== -->
+    <div class="panel active" id="panel-create">
+      <div class="grid">
+        <div class="card">
+          <h2>创建家具<span class="admin-tag">🔒 管理员</span></h2>
+          <p class="card-meta">POST /api/furniture/createFurniture/ · 需管理员权限</p>
+          <form id="form-create">
+            <label>furniture_name
+              <span class="field"><input type="text" name="furniture_name" placeholder="例如：沙发" required /></span>
+            </label>
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" /></span>
+            </label>
+            <div class="hint">Authorization: Bearer &lt;token&gt;</div>
+            <div class="divider"></div>
+            <div class="format-group">
+              <span class="format-title">请求格式（Content-Type）</span>
+              <div class="mode" id="create-reqModeGroup">
+                <label><input type="radio" name="create_req_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="create_req_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint" id="create-reqHint">使用 JSON 格式发送请求体。</div>
+            </div>
+            <div class="format-group">
+              <span class="format-title">响应格式（Accept）</span>
+              <div class="mode">
+                <label><input type="radio" name="create_resp_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="create_resp_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint">选择 Protobuf 时，响应体为 FurnitureResponse 消息的二进制序列化。</div>
+            </div>
+            <div class="status" id="status-create">准备提交</div>
+            <div class="actions">
+              <button type="submit">执行</button>
+              <button type="button" class="ghost" data-reset="create">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="req-panel" id="create-reqPanel">
+            <h3>▶ 已发送请求（Protobuf 二进制）</h3>
+            <div class="req-meta">
+              <span>Content-Type：<code>application/x-protobuf</code></span>
+              <span>字节长度：<code id="create-reqBytes">-</code></span>
+            </div>
+            <pre id="create-reqHex">等待发送...</pre>
+            <div class="hint" style="margin-top:8px;">验证：<code style="color:#c4b5fd;background:rgba(167,139,250,.1);padding:2px 6px;border-radius:6px;font-size:11px;">protoc --decode=aipet.CreateFurnitureRequest app/proto/furniture.proto &lt; request.pb</code></div>
+          </div>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="create-metaStatus">-</code></div>
+            <div>Content-Type：<code id="create-metaType">-</code></div>
+            <div>字节长度：<code id="create-metaBytes">-</code></div>
+            <a id="create-downloadBin" class="download-link" download="furniture_create_response.pb">下载 protobuf 二进制</a>
+          </div>
+          <pre id="result-create">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 查询 ===== -->
+    <div class="panel" id="panel-query">
+      <div class="grid">
+        <div class="card">
+          <h2>查询家具</h2>
+          <p class="card-meta">GET /api/furniture/dirFurniture/ · 需登录</p>
+          <form id="form-query">
+            <label>furniture_id
+              <span class="field"><input type="number" name="furniture_id" required /></span>
+            </label>
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" /></span>
+            </label>
+            <div class="hint">Authorization: Bearer &lt;token&gt;</div>
+            <div class="divider"></div>
+            <div class="info-note">ℹ️ GET 请求通过 URL Query String 传参，不使用请求体，无需 Protobuf 请求编码。</div>
+            <div class="format-group">
+              <span class="format-title">响应格式（Accept）</span>
+              <div class="mode">
+                <label><input type="radio" name="query_resp_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="query_resp_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint">选择 Protobuf 时，响应体为 FurnitureResponse 消息的二进制序列化。</div>
+            </div>
+            <div class="status" id="status-query">准备提交</div>
+            <div class="actions">
+              <button type="submit">执行</button>
+              <button type="button" class="ghost" data-reset="query">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="query-metaStatus">-</code></div>
+            <div>Content-Type：<code id="query-metaType">-</code></div>
+            <div>字节长度：<code id="query-metaBytes">-</code></div>
+            <a id="query-downloadBin" class="download-link" download="furniture_query_response.pb">下载 protobuf 二进制</a>
+          </div>
+          <pre id="result-query">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 修改 ===== -->
+    <div class="panel" id="panel-update">
+      <div class="grid">
+        <div class="card">
+          <h2>修改家具<span class="admin-tag">🔒 管理员</span></h2>
+          <p class="card-meta">PUT /api/furniture/updateFurniture/ · 需管理员权限</p>
+          <form id="form-update">
+            <label>furniture_id
+              <span class="field"><input type="number" name="furniture_id" required /></span>
+            </label>
+            <label>furniture_name
+              <span class="field"><input type="text" name="furniture_name" placeholder="例如：沙发" required /></span>
+            </label>
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" /></span>
+            </label>
+            <div class="hint">Authorization: Bearer &lt;token&gt;</div>
+            <div class="divider"></div>
+            <div class="format-group">
+              <span class="format-title">请求格式（Content-Type）</span>
+              <div class="mode" id="update-reqModeGroup">
+                <label><input type="radio" name="update_req_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="update_req_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint" id="update-reqHint">使用 JSON 格式发送请求体。</div>
+            </div>
+            <div class="format-group">
+              <span class="format-title">响应格式（Accept）</span>
+              <div class="mode">
+                <label><input type="radio" name="update_resp_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="update_resp_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint">选择 Protobuf 时，响应体为 FurnitureResponse 消息的二进制序列化。</div>
+            </div>
+            <div class="status" id="status-update">准备提交</div>
+            <div class="actions">
+              <button type="submit">执行</button>
+              <button type="button" class="ghost" data-reset="update">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="req-panel" id="update-reqPanel">
+            <h3>▶ 已发送请求（Protobuf 二进制）</h3>
+            <div class="req-meta">
+              <span>Content-Type：<code>application/x-protobuf</code></span>
+              <span>字节长度：<code id="update-reqBytes">-</code></span>
+            </div>
+            <pre id="update-reqHex">等待发送...</pre>
+            <div class="hint" style="margin-top:8px;">验证：<code style="color:#c4b5fd;background:rgba(167,139,250,.1);padding:2px 6px;border-radius:6px;font-size:11px;">protoc --decode=aipet.UpdateFurnitureRequest app/proto/furniture.proto &lt; request.pb</code></div>
+          </div>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="update-metaStatus">-</code></div>
+            <div>Content-Type：<code id="update-metaType">-</code></div>
+            <div>字节长度：<code id="update-metaBytes">-</code></div>
+            <a id="update-downloadBin" class="download-link" download="furniture_update_response.pb">下载 protobuf 二进制</a>
+          </div>
+          <pre id="result-update">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 绑定 ===== -->
+    <div class="panel" id="panel-bind">
+      <div class="grid">
+        <div class="card">
+          <h2>绑定家具到用户</h2>
+          <p class="card-meta">POST /api/user-furniture/bindFurnitureToUser/ · 需登录</p>
+          <form id="form-bind">
+            <label>furniture_id
+              <span class="field"><input type="number" name="furniture_id" required /></span>
+            </label>
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" /></span>
+            </label>
+            <div class="hint">Authorization: Bearer &lt;token&gt;</div>
+            <div class="divider"></div>
+            <div class="format-group">
+              <span class="format-title">请求格式（Content-Type）</span>
+              <div class="mode" id="bind-reqModeGroup">
+                <label><input type="radio" name="bind_req_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="bind_req_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint" id="bind-reqHint">使用 JSON 格式发送请求体。</div>
+            </div>
+            <div class="format-group">
+              <span class="format-title">响应格式（Accept）</span>
+              <div class="mode">
+                <label><input type="radio" name="bind_resp_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="bind_resp_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint">选择 Protobuf 时，响应体为 BindFurnitureResponse 消息的二进制序列化。</div>
+            </div>
+            <div class="status" id="status-bind">准备提交</div>
+            <div class="actions">
+              <button type="submit">执行</button>
+              <button type="button" class="ghost" data-reset="bind">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="req-panel" id="bind-reqPanel">
+            <h3>▶ 已发送请求（Protobuf 二进制）</h3>
+            <div class="req-meta">
+              <span>Content-Type：<code>application/x-protobuf</code></span>
+              <span>字节长度：<code id="bind-reqBytes">-</code></span>
+            </div>
+            <pre id="bind-reqHex">等待发送...</pre>
+            <div class="hint" style="margin-top:8px;">验证：<code style="color:#c4b5fd;background:rgba(167,139,250,.1);padding:2px 6px;border-radius:6px;font-size:11px;">protoc --decode=aipet.BindFurnitureRequest app/proto/user_furniture_relation.proto &lt; request.pb</code></div>
+          </div>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="bind-metaStatus">-</code></div>
+            <div>Content-Type：<code id="bind-metaType">-</code></div>
+            <div>字节长度：<code id="bind-metaBytes">-</code></div>
+            <a id="bind-downloadBin" class="download-link" download="furniture_bind_response.pb">下载 protobuf 二进制</a>
+          </div>
+          <pre id="result-bind">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 解绑 ===== -->
+    <div class="panel" id="panel-unbind">
+      <div class="grid">
+        <div class="card">
+          <h2>解绑家具与用户</h2>
+          <p class="card-meta">POST /api/user-furniture/unbindFurnitureFromUser/ · 需登录</p>
+          <form id="form-unbind">
+            <label>furniture_id
+              <span class="field"><input type="number" name="furniture_id" required /></span>
+            </label>
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" /></span>
+            </label>
+            <div class="hint">Authorization: Bearer &lt;token&gt;</div>
+            <div class="divider"></div>
+            <div class="format-group">
+              <span class="format-title">请求格式（Content-Type）</span>
+              <div class="mode" id="unbind-reqModeGroup">
+                <label><input type="radio" name="unbind_req_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="unbind_req_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint" id="unbind-reqHint">使用 JSON 格式发送请求体。</div>
+            </div>
+            <div class="format-group">
+              <span class="format-title">响应格式（Accept）</span>
+              <div class="mode">
+                <label><input type="radio" name="unbind_resp_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="unbind_resp_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint">选择 Protobuf 时，响应体为 UnbindFurnitureResponse 消息的二进制序列化。</div>
+            </div>
+            <div class="status" id="status-unbind">准备提交</div>
+            <div class="actions">
+              <button type="submit">执行</button>
+              <button type="button" class="ghost" data-reset="unbind">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="req-panel" id="unbind-reqPanel">
+            <h3>▶ 已发送请求（Protobuf 二进制）</h3>
+            <div class="req-meta">
+              <span>Content-Type：<code>application/x-protobuf</code></span>
+              <span>字节长度：<code id="unbind-reqBytes">-</code></span>
+            </div>
+            <pre id="unbind-reqHex">等待发送...</pre>
+            <div class="hint" style="margin-top:8px;">验证：<code style="color:#c4b5fd;background:rgba(167,139,250,.1);padding:2px 6px;border-radius:6px;font-size:11px;">protoc --decode=aipet.UnbindFurnitureRequest app/proto/user_furniture_relation.proto &lt; request.pb</code></div>
+          </div>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="unbind-metaStatus">-</code></div>
+            <div>Content-Type：<code id="unbind-metaType">-</code></div>
+            <div>字节长度：<code id="unbind-metaBytes">-</code></div>
+            <a id="unbind-downloadBin" class="download-link" download="furniture_unbind_response.pb">下载 protobuf 二进制</a>
+          </div>
+          <pre id="result-unbind">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 列表 ===== -->
+    <div class="panel" id="panel-list">
+      <div class="grid">
+        <div class="card">
+          <h2>查询用户的家具列表</h2>
+          <p class="card-meta">GET /api/user-furniture/dirFurnitureListByUser/ · 需登录</p>
+          <form id="form-list">
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" /></span>
+            </label>
+            <div class="hint">Authorization: Bearer &lt;token&gt;</div>
+            <div class="divider"></div>
+            <div class="info-note">ℹ️ GET 请求无需额外参数，用户身份通过 Token 鉴权，返回该用户名下所有家具。</div>
+            <div class="format-group">
+              <span class="format-title">响应格式（Accept）</span>
+              <div class="mode">
+                <label><input type="radio" name="list_resp_mode" value="json" checked /> JSON</label>
+                <label><input type="radio" name="list_resp_mode" value="protobuf" /> Protobuf 二进制</label>
+              </div>
+              <div class="hint">选择 Protobuf 时，响应体为 FurnitureListResponse 消息的二进制序列化。</div>
+            </div>
+            <div class="status" id="status-list">准备提交</div>
+            <div class="actions">
+              <button type="submit">执行</button>
+              <button type="button" class="ghost" data-reset="list">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="list-metaStatus">-</code></div>
+            <div>Content-Type：<code id="list-metaType">-</code></div>
+            <div>字节长度：<code id="list-metaBytes">-</code></div>
+            <a id="list-downloadBin" class="download-link" download="furniture_list_response.pb">下载 protobuf 二进制</a>
+          </div>
+          <pre id="result-list">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 家具库 ===== -->
+    <div class="panel" id="panel-alllist">
+      <div class="grid">
+        <div class="card">
+          <h2>查询所有家具</h2>
+          <p class="card-meta">GET /api/furniture/dirFurnitureList/ · 需登录</p>
+          <form id="form-alllist">
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" /></span>
+            </label>
+            <div class="info-note">ℹ️ 无需传参，返回系统中全部可用家具列表。</div>
+            <div class="status" id="status-alllist">准备提交</div>
+            <div class="actions">
+              <button type="submit">执行</button>
+              <button type="button" class="ghost" data-reset="alllist">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="alllist-metaStatus">-</code></div>
+            <div>Content-Type：<code id="alllist-metaType">-</code></div>
+            <div>字节长度：<code id="alllist-metaBytes">-</code></div>
+            <a id="alllist-downloadBin" class="download-link" download="furniture_alllist_response.pb">下载 protobuf 二进制</a>
+          </div>
+          <pre id="result-alllist">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/protobufjs@7/dist/protobuf.min.js"></script>
+  <script>
+    // ── Proto 消息定义 ──────────────────────────────────────────
+    const protoRoot = protobuf.Root.fromJSON({ nested: { aipet: { nested: {
+      CreateFurnitureRequest: { fields: { furniture_name: { id:1, type:"string", rule:"optional" } } },
+      UpdateFurnitureRequest: { fields: { furniture_id: { id:1, type:"int32" }, furniture_name: { id:2, type:"string" } } },
+      BindFurnitureRequest:   { fields: { furniture_id: { id:1, type:"int32", rule:"optional" } } },
+      UnbindFurnitureRequest: { fields: { furniture_id: { id:1, type:"int32", rule:"optional" } } }
+    }}}});
+    const CreateFurnitureMsg = protoRoot.lookupType("aipet.CreateFurnitureRequest");
+    const UpdateFurnitureMsg = protoRoot.lookupType("aipet.UpdateFurnitureRequest");
+    const BindFurnitureMsg   = protoRoot.lookupType("aipet.BindFurnitureRequest");
+    const UnbindFurnitureMsg = protoRoot.lookupType("aipet.UnbindFurnitureRequest");
+
+    // ── 工具函数 ────────────────────────────────────────────────
+    const $ = id => document.getElementById(id);
+
+    const toHex = (arr, ml=128, w=16) => {
+      const n = Math.min(arr.length, ml), l = [];
+      for (let i=0; i<n; i+=w) {
+        const c = Array.from(arr.slice(i, i+w));
+        l.push(`${c.map(b=>b.toString(16).padStart(2,"0")).join(" ").padEnd(w*3-1)}  ${c.map(b=>(b>=32&&b<127)?String.fromCharCode(b):".").join("")}`);
+      }
+      if (arr.length > ml) l.push(`... (共 ${arr.length} 字节，仅展示前 ${ml} 字节)`);
+      return l.join("\n");
+    };
+
+    const fmtErr = o => {
+      if (o==null) return "(empty)";
+      if (typeof o==="string") return o;
+      if (Array.isArray(o)) return o.map(fmtErr).join(" ; ");
+      if (typeof o==="object") return Object.entries(o).map(([k,v])=>`${k}: ${fmtErr(v)}`).join("\n");
+      return String(o);
+    };
+
+    function setStatus(key, text, ok) {
+      const el = $("status-" + key);
+      el.textContent = text;
+      el.className = "status" + (ok===true?" ok":ok===false?" err":"");
+    }
+
+    function getToken(formData) {
+      return formData.get("access_token") || localStorage.getItem("access_token") || "";
+    }
+
+    function resetMeta(prefix, hasReqPanel) {
+      $(`${prefix}-metaStatus`).textContent = "-";
+      $(`${prefix}-metaType`).textContent   = "-";
+      $(`${prefix}-metaBytes`).textContent  = "-";
+      $(`${prefix}-downloadBin`).style.display = "none";
+      $(`${prefix}-downloadBin`).removeAttribute("href");
+      if (hasReqPanel) {
+        $(`${prefix}-reqPanel`).style.display = "none";
+        $(`${prefix}-reqHex`).textContent = "等待发送...";
+      }
+    }
+
+    async function handleProtoResp(res, prefix, protoName, protoFile, fallbackFn) {
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      $(`${prefix}-metaStatus`).textContent = String(res.status);
+      $(`${prefix}-metaType`).textContent   = ct || "(empty)";
+      if (ct.includes("application/x-protobuf")) {
+        const bytes = new Uint8Array(await res.arrayBuffer());
+        $(`${prefix}-metaBytes`).textContent = String(bytes.length);
+        const dl = $(`${prefix}-downloadBin`);
+        dl.href = URL.createObjectURL(new Blob([bytes], {type:"application/x-protobuf"}));
+        dl.style.display = "inline";
+        let out = `已收到 Protobuf 二进制响应（${protoName}）\n验证：\n  protoc --decode=aipet.${protoName} ${protoFile} < response.pb\n\n十六进制预览（前 128 字节）：\n` + toHex(bytes);
+        if (!res.ok && fallbackFn) {
+          try { const dj = await fallbackFn(); out += "\n\n可读错误信息：\n" + (dj ? fmtErr(dj.message ?? dj) : "(无法解析)"); } catch(_){}
+        }
+        $("result-" + prefix).textContent = out;
+        return res.ok;
+      } else {
+        const data = await res.json();
+        $(`${prefix}-metaBytes`).textContent = String(new TextEncoder().encode(JSON.stringify(data)).length);
+        $("result-" + prefix).textContent = JSON.stringify(data, null, 2);
+        return data?.success;
+      }
+    }
+
+    function buildPostRequest(MsgType, payload, reqMode, respMode, token) {
+      let body, ct;
+      if (reqMode === "protobuf") {
+        const err = MsgType.verify(payload);
+        if (err) throw new Error("Protobuf 编码失败：" + err);
+        const bytes = MsgType.encode(MsgType.create(payload)).finish();
+        body = bytes; ct = "application/x-protobuf";
+      } else {
+        body = JSON.stringify(payload); ct = "application/json";
+      }
+      const headers = { "Content-Type": ct, "Accept": respMode==="protobuf"?"application/x-protobuf":"application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+      return { body, headers, isProto: reqMode==="protobuf" };
+    }
+
+    // ── Tab 切换 ────────────────────────────────────────────────
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        $("panel-" + btn.dataset.tab).classList.add("active");
+      });
+    });
+
+    // ── 清空按钮 ─────────────────────────────────────────────────
+    document.querySelectorAll("[data-reset]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const k = btn.dataset.reset;
+        $("form-" + k).reset();
+        $("result-" + k).textContent = "等待提交...";
+        setStatus(k, "已清空");
+        const hasReqPanel = ["create","update","bind","unbind"].includes(k);
+        resetMeta(k, hasReqPanel);
+      });
+    });
+
+    // ── 请求格式提示联动 ─────────────────────────────────────────
+    $("create-reqModeGroup").addEventListener("change", e => {
+      $("create-reqHint").textContent = e.target.value==="protobuf"
+        ? "使用 protobufjs 将表单数据编码为 CreateFurnitureRequest 二进制，以 Content-Type: application/x-protobuf 发送。"
+        : "使用 JSON 格式发送请求体。";
+    });
+    $("update-reqModeGroup").addEventListener("change", e => {
+      $("update-reqHint").textContent = e.target.value==="protobuf"
+        ? "使用 protobufjs 将表单数据编码为 UpdateFurnitureRequest 二进制，以 Content-Type: application/x-protobuf 发送。"
+        : "使用 JSON 格式发送请求体。";
+    });
+    $("bind-reqModeGroup").addEventListener("change", e => {
+      $("bind-reqHint").textContent = e.target.value==="protobuf"
+        ? "使用 protobufjs 将表单数据编码为 BindFurnitureRequest 二进制，以 Content-Type: application/x-protobuf 发送。"
+        : "使用 JSON 格式发送请求体。";
+    });
+    $("unbind-reqModeGroup").addEventListener("change", e => {
+      $("unbind-reqHint").textContent = e.target.value==="protobuf"
+        ? "使用 protobufjs 将表单数据编码为 UnbindFurnitureRequest 二进制，以 Content-Type: application/x-protobuf 发送。"
+        : "使用 JSON 格式发送请求体。";
+    });
+
+    // ── 创建 ─────────────────────────────────────────────────────
+    $("form-create").addEventListener("submit", async e => {
+      e.preventDefault();
+      const fd      = new FormData(e.target);
+      const token   = getToken(fd);
+      const reqMode = fd.get("create_req_mode")  || "json";
+      const respMode= fd.get("create_resp_mode") || "json";
+      const payload = { furniture_name: fd.get("furniture_name") };
+
+      setStatus("create", "请求中...");
+      resetMeta("create", true);
+      $("result-create").textContent = "请求中...";
+
+      let req;
+      try { req = buildPostRequest(CreateFurnitureMsg, payload, reqMode, respMode, token); }
+      catch(err) { setStatus("create", err.message, false); return; }
+
+      if (req.isProto) {
+        $("create-reqPanel").style.display = "block";
+        $("create-reqBytes").textContent   = String(req.body.length);
+        $("create-reqHex").textContent     = toHex(req.body);
+      }
+
+      try {
+        const res = await fetch("/api/furniture/createFurniture/", { method:"POST", headers:req.headers, body:req.body });
+        const ok = await handleProtoResp(res, "create", "FurnitureResponse", "app/proto/furniture.proto",
+          async () => { const r = await fetch("/api/furniture/createFurniture/", {method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)}); return r.json().catch(()=>null); }
+        );
+        setStatus("create", ok ? "✓ 创建成功" : "创建失败", ok);
+      } catch(err) { setStatus("create", "请求失败: "+err.message, false); $("result-create").textContent = err.message; }
+    });
+
+    // ── 查询 ─────────────────────────────────────────────────────
+    $("form-query").addEventListener("submit", async e => {
+      e.preventDefault();
+      const fd      = new FormData(e.target);
+      const token   = getToken(fd);
+      const respMode= fd.get("query_resp_mode") || "json";
+      const params  = new URLSearchParams({ furniture_id: fd.get("furniture_id") });
+      const headers = { "Accept": respMode==="protobuf"?"application/x-protobuf":"application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+
+      setStatus("query", "请求中...");
+      resetMeta("query", false);
+      $("result-query").textContent = "请求中...";
+
+      try {
+        const res = await fetch("/api/furniture/dirFurniture/?" + params, { method:"GET", headers });
+        const ok = await handleProtoResp(res, "query", "FurnitureResponse", "app/proto/furniture.proto", null);
+        setStatus("query", ok ? "✓ 查询成功" : "查询失败", ok);
+      } catch(err) { setStatus("query", "请求失败: "+err.message, false); $("result-query").textContent = err.message; }
+    });
+
+    // ── 修改 ─────────────────────────────────────────────────────
+    $("form-update").addEventListener("submit", async e => {
+      e.preventDefault();
+      const fd      = new FormData(e.target);
+      const token   = getToken(fd);
+      const reqMode = fd.get("update_req_mode")  || "json";
+      const respMode= fd.get("update_resp_mode") || "json";
+      const payload = {
+        furniture_id:   parseInt(fd.get("furniture_id")||"0"),
+        furniture_name: fd.get("furniture_name")
+      };
+
+      setStatus("update", "请求中...");
+      resetMeta("update", true);
+      $("result-update").textContent = "请求中...";
+
+      let req;
+      try { req = buildPostRequest(UpdateFurnitureMsg, payload, reqMode, respMode, token); }
+      catch(err) { setStatus("update", err.message, false); return; }
+
+      if (req.isProto) {
+        $("update-reqPanel").style.display = "block";
+        $("update-reqBytes").textContent   = String(req.body.length);
+        $("update-reqHex").textContent     = toHex(req.body);
+      }
+
+      try {
+        const res = await fetch("/api/furniture/updateFurniture/", { method:"PUT", headers:req.headers, body:req.body });
+        const ok = await handleProtoResp(res, "update", "FurnitureResponse", "app/proto/furniture.proto",
+          async () => { const r = await fetch("/api/furniture/updateFurniture/", {method:"PUT",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)}); return r.json().catch(()=>null); }
+        );
+        setStatus("update", ok ? "✓ 修改成功" : "修改失败", ok);
+      } catch(err) { setStatus("update", "请求失败: "+err.message, false); $("result-update").textContent = err.message; }
+    });
+
+    // ── 绑定 ─────────────────────────────────────────────────────
+    $("form-bind").addEventListener("submit", async e => {
+      e.preventDefault();
+      const fd      = new FormData(e.target);
+      const token   = getToken(fd);
+      const reqMode = fd.get("bind_req_mode")  || "json";
+      const respMode= fd.get("bind_resp_mode") || "json";
+      const payload = { furniture_id: parseInt(fd.get("furniture_id")||"0") };
+
+      setStatus("bind", "请求中...");
+      resetMeta("bind", true);
+      $("result-bind").textContent = "请求中...";
+
+      let req;
+      try { req = buildPostRequest(BindFurnitureMsg, payload, reqMode, respMode, token); }
+      catch(err) { setStatus("bind", err.message, false); return; }
+
+      if (req.isProto) {
+        $("bind-reqPanel").style.display = "block";
+        $("bind-reqBytes").textContent   = String(req.body.length);
+        $("bind-reqHex").textContent     = toHex(req.body);
+      }
+
+      try {
+        const res = await fetch("/api/user-furniture/bindFurnitureToUser/", { method:"POST", headers:req.headers, body:req.body });
+        const ok = await handleProtoResp(res, "bind", "BindFurnitureResponse", "app/proto/user_furniture_relation.proto",
+          async () => { const r = await fetch("/api/user-furniture/bindFurnitureToUser/", {method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)}); return r.json().catch(()=>null); }
+        );
+        setStatus("bind", ok ? "✓ 绑定成功" : "绑定失败", ok);
+      } catch(err) { setStatus("bind", "请求失败: "+err.message, false); $("result-bind").textContent = err.message; }
+    });
+
+    // ── 解绑 ─────────────────────────────────────────────────────
+    $("form-unbind").addEventListener("submit", async e => {
+      e.preventDefault();
+      const fd      = new FormData(e.target);
+      const token   = getToken(fd);
+      const reqMode = fd.get("unbind_req_mode")  || "json";
+      const respMode= fd.get("unbind_resp_mode") || "json";
+      const payload = { furniture_id: parseInt(fd.get("furniture_id")||"0") };
+
+      setStatus("unbind", "请求中...");
+      resetMeta("unbind", true);
+      $("result-unbind").textContent = "请求中...";
+
+      let req;
+      try { req = buildPostRequest(UnbindFurnitureMsg, payload, reqMode, respMode, token); }
+      catch(err) { setStatus("unbind", err.message, false); return; }
+
+      if (req.isProto) {
+        $("unbind-reqPanel").style.display = "block";
+        $("unbind-reqBytes").textContent   = String(req.body.length);
+        $("unbind-reqHex").textContent     = toHex(req.body);
+      }
+
+      try {
+        const res = await fetch("/api/user-furniture/unbindFurnitureFromUser/", { method:"POST", headers:req.headers, body:req.body });
+        const ok = await handleProtoResp(res, "unbind", "UnbindFurnitureResponse", "app/proto/user_furniture_relation.proto",
+          async () => { const r = await fetch("/api/user-furniture/unbindFurnitureFromUser/", {method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)}); return r.json().catch(()=>null); }
+        );
+        setStatus("unbind", ok ? "✓ 解绑成功" : "解绑失败", ok);
+      } catch(err) { setStatus("unbind", "请求失败: "+err.message, false); $("result-unbind").textContent = err.message; }
+    });
+
+    // ── 家具库 ────────────────────────────────────────────────────
+    $("form-alllist").addEventListener("submit", async e => {
+      e.preventDefault();
+      const fd    = new FormData(e.target);
+      const token = getToken(fd);
+      const headers = { "Accept": "application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+      setStatus("alllist", "请求中...");
+      resetMeta("alllist", false);
+      $("result-alllist").textContent = "请求中...";
+      try {
+        const res = await fetch("/api/furniture/dirFurnitureList/", { method:"GET", headers });
+        const ok = await handleProtoResp(res, "alllist", "FurnitureListResponse", "app/proto/furniture.proto", null);
+        setStatus("alllist", ok ? "✓ 查询成功" : "查询失败", ok);
+      } catch(err) { setStatus("alllist", "请求失败: "+err.message, false); $("result-alllist").textContent = err.message; }
+    });
+
+    // ── 列表 ─────────────────────────────────────────────────────
+    $("form-list").addEventListener("submit", async e => {
+      e.preventDefault();
+      const fd      = new FormData(e.target);
+      const token   = getToken(fd);
+      const respMode= fd.get("list_resp_mode") || "json";
+      const headers = { "Accept": respMode==="protobuf"?"application/x-protobuf":"application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
+
+      setStatus("list", "请求中...");
+      resetMeta("list", false);
+      $("result-list").textContent = "请求中...";
+
+      try {
+        const res = await fetch("/api/user-furniture/dirFurnitureListByUser/", { method:"GET", headers });
+        const ok = await handleProtoResp(res, "list", "FurnitureListResponse", "app/proto/user_furniture_relation.proto", null);
+        setStatus("list", ok ? "✓ 查询成功" : "查询失败", ok);
+      } catch(err) { setStatus("list", "请求失败: "+err.message, false); $("result-list").textContent = err.message; }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+// =============================================================================
+// furniture.proto  —  家具模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/furniture/createFurniture/   （创建家具）
+//   PUT  /api/furniture/updateFurniture/   （修改家具名称）
+//   GET  /api/furniture/dirFurniture/      （查询家具信息）
+//
+// 编译方式（生成 furniture_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/furniture.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// FurnitureInfo —— 家具基础信息。
+// 在创建、修改和查询响应中均返回此结构。
+message FurnitureInfo {
+  int32  furniture_id   = 1; // 家具主键，数据库自增 ID
+  string furniture_name = 2; // 家具名称，如"木桌"、"沙发"，全局唯一
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// FurnitureResponse —— 创建 / 修改 / 查询家具接口的统一响应格式。
+message FurnitureResponse {
+  string        result  = 1; // "success" 或 "fail"
+  bool          success = 2; // true / false
+  FurnitureInfo data    = 3; // 操作成功时返回的家具信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 纯文本说明，例："创建成功"、"家具不存在"
+    ValidationError error = 5; // 字段级校验错误，例：{"furniture_name": ["该家具名称已存在"]}
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// CreateFurnitureRequest —— 创建家具请求体。
+// 对应接口：POST /api/furniture/createFurniture/
+message CreateFurnitureRequest {
+  string furniture_name = 1; // 家具名称，必填，全局唯一
+}
+
+// UpdateFurnitureRequest —— 修改家具请求体。
+// 对应接口：PUT /api/furniture/updateFurniture/
+message UpdateFurnitureRequest {
+  int32  furniture_id   = 1; // 要修改的家具 ID，必填，用于定位记录
+  string furniture_name = 2; // 新名称，必填
+}
+
+// GET dirFurniture 通过 URL Query String 传参（?furniture_id=1），无请求体消息。

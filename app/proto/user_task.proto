@@ -1,0 +1,92 @@
+// =============================================================================
+// user_task.proto  —  用户任务模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/models/createUserTask/          （创建任务）
+//   PUT  /api/models/updateUserTask/          （修改任务名称）
+//   GET  /api/models/dirUserTask/             （查询单个任务）
+//   GET  /api/models/dirUserTaskListByUser/   （查询当前用户的任务列表）
+//
+// 编译方式（生成 user_task_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/user_task.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// UserTaskInfo —— 用户任务基础信息。
+// 在创建、修改、查询响应中均返回此结构。
+message UserTaskInfo {
+  int32  user_task_id = 1; // 任务主键，数据库自增 ID
+  int32  user_id      = 2; // 所属用户 ID（与登录用户一致）
+  string task_name    = 3; // 任务名称，同一用户下唯一
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// UserTaskResponse —— 创建任务 / 修改任务 / 查询单个任务的统一响应格式。
+// 对应接口：
+//   POST /api/models/createUserTask/
+//   PUT  /api/models/updateUserTask/
+//   GET  /api/models/dirUserTask/
+message UserTaskResponse {
+  string       result  = 1; // "success" 或 "fail"
+  bool         success = 2; // true / false
+  UserTaskInfo data    = 3; // 操作成功时返回的任务信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 纯文本说明，例："创建成功"、"任务不存在"
+    ValidationError error = 5; // 字段级校验错误，例：{"task_name": ["任务名已存在"]}
+  }
+}
+
+// UserTaskListResponse —— 查询当前用户任务列表的响应格式。
+// 对应接口：GET /api/models/dirUserTaskListByUser/
+// data 为 repeated，可包含 0 到多条任务记录。
+message UserTaskListResponse {
+  string             result  = 1; // "success" 或 "fail"
+  bool               success = 2; // true / false
+  repeated UserTaskInfo data = 3; // 任务列表，可为空列表
+
+  oneof message_content {
+    string          text  = 4; // 例："查询成功"
+    ValidationError error = 5; // 通常不会有字段校验错误，保留以保持结构一致性
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// CreateUserTaskRequest —— 创建任务请求体。
+// 对应接口：POST /api/models/createUserTask/
+// user_id 由服务端从 JWT 中自动获取，无需客户端传递。
+message CreateUserTaskRequest {
+  string task_name = 1; // 任务名称，必填，同一用户下不可重复
+}
+
+// UpdateUserTaskRequest —— 修改任务名称请求体。
+// 对应接口：PUT /api/models/updateUserTask/
+// 服务端仅允许修改 task_name 字段，user_task_id 用于定位目标任务。
+message UpdateUserTaskRequest {
+  int32  user_task_id = 1; // 要修改的任务 ID，必填
+  string task_name    = 2; // 新的任务名称，必填
+}
+
+// GET 查询接口通过 URL Query String 传参，无请求体消息：
+//   dirUserTask:           ?user_task_id=1
+//   dirUserTaskListByUser: 无参数（从 JWT 中获取当前用户）

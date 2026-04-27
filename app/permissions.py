@@ -52,6 +52,22 @@ def get_owner_user(obj) -> Optional[User]:
     return None
 
 
+class IsAdminUser(BasePermission):
+    """
+    管理员权限：user_role >= 1 才允许访问。
+    用于字典表管理类接口（创建 / 修改动作、成就、家具、道具等）。
+    """
+
+    message = '需要管理员权限'
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user
+            and getattr(request.user, 'is_authenticated', False)
+            and getattr(request.user, 'user_role', 0) >= 1
+        )
+
+
 class IsOwnerPermission(BasePermission):
     """
     统一归属权限：

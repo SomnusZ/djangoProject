@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(venv\\\\Scripts\\\\python.exe -m grpc_tools.protoc -I. -Ivenv/Lib/site-packages/grpc_tools/_proto --python_out=. app/proto/user.proto)",
+      "Bash(\"venv/Scripts/python.exe\" -m grpc_tools.protoc -I. -I\"venv/Lib/site-packages/grpc_tools/_proto\" --python_out=. app/proto/user.proto)",
+      "Bash(venv/Scripts/python.exe -c ':*)",
+      "Bash(\"venv/Scripts/python.exe\" -c \"from google.protobuf.json_format import MessageToDict; help\\(MessageToDict\\)\")",
+      "Bash(\"venv/Scripts/python.exe\" -m grpc_tools.protoc -I. -Ivenv/Lib/site-packages/grpc_tools/_proto --python_out=. app/proto/common.proto app/proto/user.proto app/proto/pet_action.proto app/proto/pet_model.proto app/proto/user_task.proto app/proto/user_task_action_relation.proto)",
+      "Bash(python3 -c ':*)",
+      "Bash(python3 -)",
+      "Bash(python3 fix_ls.py)",
+      "Bash(python fix_ls.py)",
+      "Bash(python manage.py makemigrations wealth user_wealth_relation)",
+      "Bash(venv/Scripts/python.exe manage.py migrate)",
+      "Bash(venv/Scripts/python.exe manage.py check)",
+      "Bash(venv/Scripts/python.exe manage.py makemigrations playtask user_playtask_relation)",
+      "Bash(venv/Scripts/python.exe manage.py makemigrations achievement user_achievement_relation)",
+      "Bash(venv/Scripts/python.exe manage.py makemigrations furniture user_furniture_relation)",
+      "Bash(venv/Scripts/python.exe manage.py makemigrations property user_property_relation)",
+      "Bash(venv/Scripts/python.exe -m grpc_tools.protoc -I. -Ivenv/Lib/site-packages/grpc_tools/_proto --python_out=. app/proto/wealth.proto app/proto/user_wealth_relation.proto app/proto/playtask.proto app/proto/user_playtask_relation.proto app/proto/achievement.proto app/proto/user_achievement_relation.proto app/proto/furniture.proto app/proto/user_furniture_relation.proto app/proto/property.proto app/proto/user_property_relation.proto)",
+      "Bash(venv\\\\Scripts\\\\python.exe manage.py makemigrations user --name=\"add_user_status\")"
+    ]
+  }
+}

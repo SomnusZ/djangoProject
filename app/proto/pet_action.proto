@@ -1,0 +1,63 @@
+// =============================================================================
+// pet_action.proto  —  宠物动作模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/actions/createAction/   （创建动作）
+//   GET  /api/actions/dirAction/      （查询动作信息）
+//
+// 编译方式（生成 pet_action_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/pet_action.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// PetActionInfo —— 宠物动作基础信息。
+// 在创建和查询响应中均返回此结构。
+message PetActionInfo {
+  int32  pet_action_id   = 1; // 动作主键，数据库自增 ID
+  string pet_action_name = 2; // 动作名称，如 "sit" / "shake"
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// PetActionResponse —— 创建动作 / 查询动作接口的统一响应格式。
+// 对应接口：
+//   POST /api/actions/createAction/
+//   GET  /api/actions/dirAction/
+message PetActionResponse {
+  string        result  = 1; // "success" 或 "fail"
+  bool          success = 2; // true / false
+  PetActionInfo data    = 3; // 操作成功时返回的动作信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 纯文本说明，例："创建成功"、"动作不存在"
+    ValidationError error = 5; // 字段级校验错误，例：{"pet_action_name": ["该字段是必填项"]}
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// CreateActionRequest —— 创建动作请求体。
+// 对应接口：POST /api/actions/createAction/
+message CreateActionRequest {
+  string pet_action_name = 1; // 动作名称，必填
+}
+
+// GET dirAction 通过 URL Query String 传参（?pet_action_id=1），无请求体消息。

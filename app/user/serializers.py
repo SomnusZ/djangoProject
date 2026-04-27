@@ -28,6 +28,8 @@ class UserSerializer(serializers.ModelSerializer):
             'user_profile_picture',
             'user_phone_number',
             'user_mail_address',
+            'user_status',
+            'user_role',
         )
 
 
@@ -110,14 +112,19 @@ class CreateUserSerializer(serializers.ModelSerializer):
 class UpdateUserSerializer(serializers.ModelSerializer):
     """
     用户信息更新序列化器。
-    仅允许修改用户名。
+    允许修改用户名、用户状态。
     """
 
     class Meta:
         model = User
         fields = (
             'user_name',
+            'user_status',
         )
+        extra_kwargs = {
+            'user_name':   {'required': False},
+            'user_status': {'required': False},
+        }
 
 
 class LoginSerializer(serializers.Serializer):

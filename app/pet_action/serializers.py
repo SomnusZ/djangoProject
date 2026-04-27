@@ -33,6 +33,19 @@ class CreatePetActionSerializer(serializers.ModelSerializer):
         )
 
 
+class UpdatePetActionSerializer(serializers.ModelSerializer):
+    """
+    修改动作序列化器。
+    仅允许修改 pet_action_name。
+    """
+
+    class Meta:
+        model = PetAction
+        fields = (
+            'pet_action_name',
+        )
+
+
 class DirActionQuerySerializer(serializers.Serializer):
     """
     查询动作信息序列化器。

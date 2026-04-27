@@ -1,0 +1,103 @@
+// =============================================================================
+// user_achievement_relation.proto  —  用户成就关联模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/user-achievement/bindAchievementToUser/      （解锁成就）
+//   POST /api/user-achievement/unbindAchievementFromUser/  （撤销成就）
+//   GET  /api/user-achievement/dirAchievementListByUser/   （查询用户已解锁成就列表）
+//
+// 编译方式（生成 user_achievement_relation_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/user_achievement_relation.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// AchievementRelationInfo —— 用户成就关联记录信息。
+// 在解锁成功和列表查询中均返回此结构。
+// 注意：成就无数量字段，仅记录是否解锁（关联记录存在即为已解锁）。
+message AchievementRelationInfo {
+  int32  relation_id      = 1; // 关联记录主键，数据库自增 ID
+  int32  user_id          = 2; // 关联的用户 ID
+  int32  achievement_id   = 3; // 关联的成就 ID
+  string achievement_name = 4; // 成就名称，冗余字段，方便客户端直接展示
+}
+
+// AchievementUnbindInfo —— 撤销成就后返回的确认信息（无 relation_id，因记录已删除）。
+message AchievementUnbindInfo {
+  int32 achievement_id = 1; // 被撤销的成就 ID
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// BindAchievementResponse —— 解锁成就（绑定）的响应格式。
+// 对应接口：POST /api/user-achievement/bindAchievementToUser/
+message BindAchievementResponse {
+  string                  result  = 1; // "success" 或 "fail"
+  bool                    success = 2; // true / false
+  AchievementRelationInfo data    = 3; // 解锁成功时返回的关联记录；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："成就解锁成功"、"该用户已解锁该成就"
+    ValidationError error = 5; // 字段级校验错误
+  }
+}
+
+// UnbindAchievementResponse —— 撤销成就（解绑）的响应格式。
+// 对应接口：POST /api/user-achievement/unbindAchievementFromUser/
+message UnbindAchievementResponse {
+  string                result  = 1; // "success" 或 "fail"
+  bool                  success = 2; // true / false
+  AchievementUnbindInfo data    = 3; // 撤销成功时返回确认信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："成就撤销成功"、"关联不存在"
+    ValidationError error = 5; // 字段级校验错误
+  }
+}
+
+// AchievementRelationListResponse —— 查询用户已解锁成就列表的响应格式。
+// 对应接口：GET /api/user-achievement/dirAchievementListByUser/
+// data 为 repeated，可包含 0 到多条关联记录。
+message AchievementRelationListResponse {
+  string                          result  = 1; // "success" 或 "fail"
+  bool                            success = 2; // true / false
+  repeated AchievementRelationInfo data   = 3; // 已解锁成就列表，可为空列表
+
+  oneof message_content {
+    string          text  = 4; // 例："查询成功"
+    ValidationError error = 5; // 保留以保持结构一致性
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// BindAchievementRequest —— 解锁成就（绑定）的请求体。
+// 对应接口：POST /api/user-achievement/bindAchievementToUser/
+message BindAchievementRequest {
+  int32 achievement_id = 1; // 要解锁的成就 ID，必须已存在
+}
+
+// UnbindAchievementRequest —— 撤销成就（解绑）的请求体。
+// 对应接口：POST /api/user-achievement/unbindAchievementFromUser/
+message UnbindAchievementRequest {
+  int32 achievement_id = 1; // 要撤销的成就 ID
+}
+
+// GET dirAchievementListByUser 无需请求体，用户身份从 JWT 中自动获取。

@@ -1,0 +1,68 @@
+// =============================================================================
+// achievement.proto  —  成就模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/achievement/createAchievement/   （创建成就）
+//   PUT  /api/achievement/updateAchievement/   （修改成就名称）
+//   GET  /api/achievement/dirAchievement/      （查询成就信息）
+//
+// 编译方式（生成 achievement_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/achievement.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// AchievementInfo —— 成就基础信息。
+// 在创建、修改和查询响应中均返回此结构。
+message AchievementInfo {
+  int32  achievement_id   = 1; // 成就主键，数据库自增 ID
+  string achievement_name = 2; // 成就名称，如"首次登录"、"连续签到7天"，全局唯一
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// AchievementResponse —— 创建 / 修改 / 查询成就接口的统一响应格式。
+message AchievementResponse {
+  string          result  = 1; // "success" 或 "fail"
+  bool            success = 2; // true / false
+  AchievementInfo data    = 3; // 操作成功时返回的成就信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 纯文本说明，例："创建成功"、"成就不存在"
+    ValidationError error = 5; // 字段级校验错误，例：{"achievement_name": ["该成就名称已存在"]}
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// CreateAchievementRequest —— 创建成就请求体。
+// 对应接口：POST /api/achievement/createAchievement/
+message CreateAchievementRequest {
+  string achievement_name = 1; // 成就名称，必填，全局唯一
+}
+
+// UpdateAchievementRequest —— 修改成就请求体。
+// 对应接口：PUT /api/achievement/updateAchievement/
+message UpdateAchievementRequest {
+  int32  achievement_id   = 1; // 要修改的成就 ID，必填，用于定位记录
+  string achievement_name = 2; // 新名称，必填
+}
+
+// GET dirAchievement 通过 URL Query String 传参（?achievement_id=1），无请求体消息。

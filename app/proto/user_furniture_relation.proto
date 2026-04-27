@@ -1,0 +1,103 @@
+// =============================================================================
+// user_furniture_relation.proto  —  用户家具关联模块的 Protobuf 消息定义
+//
+// 接口覆盖：
+//   POST /api/user-furniture/bindFurnitureToUser/      （绑定家具到用户）
+//   POST /api/user-furniture/unbindFurnitureFromUser/  （解绑家具与用户）
+//   GET  /api/user-furniture/dirFurnitureListByUser/   （查询用户名下家具列表）
+//
+// 编译方式（生成 user_furniture_relation_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/user_furniture_relation.proto
+// =============================================================================
+
+syntax = "proto3";
+
+package aipet;
+
+// 引入公共类型：ValidationError（字段级校验错误）
+import "app/proto/common.proto";
+
+// =============================================================================
+// 共享数据结构
+// =============================================================================
+
+// FurnitureRelationInfo —— 用户家具关联记录信息。
+// 在绑定成功和列表查询中均返回此结构。
+message FurnitureRelationInfo {
+  int32  relation_id       = 1; // 关联记录主键，数据库自增 ID
+  int32  user_id           = 2; // 关联的用户 ID
+  int32  furniture_id      = 3; // 关联的家具 ID
+  string furniture_name    = 4; // 家具名称，冗余字段，方便客户端直接展示
+  int32  furniture_amount  = 5; // 当前用户拥有该家具的数量，默认 0
+}
+
+// FurnitureUnbindInfo —— 解绑成功后返回的确认信息（无 relation_id，因记录已删除）。
+message FurnitureUnbindInfo {
+  int32 furniture_id = 1; // 被解绑的家具 ID
+}
+
+// =============================================================================
+// 响应消息
+// =============================================================================
+
+// BindFurnitureResponse —— 绑定家具到用户的响应格式。
+// 对应接口：POST /api/user-furniture/bindFurnitureToUser/
+message BindFurnitureResponse {
+  string               result  = 1; // "success" 或 "fail"
+  bool                 success = 2; // true / false
+  FurnitureRelationInfo data   = 3; // 绑定成功时返回的关联记录；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："绑定成功"、"该用户已绑定该家具"
+    ValidationError error = 5; // 字段级校验错误
+  }
+}
+
+// UnbindFurnitureResponse —— 解绑家具与用户的响应格式。
+// 对应接口：POST /api/user-furniture/unbindFurnitureFromUser/
+message UnbindFurnitureResponse {
+  string             result  = 1; // "success" 或 "fail"
+  bool               success = 2; // true / false
+  FurnitureUnbindInfo data   = 3; // 解绑成功时返回确认信息；失败时字段均为默认值
+
+  oneof message_content {
+    string          text  = 4; // 例："解绑成功"、"关联不存在"
+    ValidationError error = 5; // 字段级校验错误
+  }
+}
+
+// FurnitureRelationListResponse —— 查询用户家具列表的响应格式。
+// 对应接口：GET /api/user-furniture/dirFurnitureListByUser/
+// data 为 repeated，可包含 0 到多条关联记录。
+message FurnitureRelationListResponse {
+  string                       result  = 1; // "success" 或 "fail"
+  bool                         success = 2; // true / false
+  repeated FurnitureRelationInfo data  = 3; // 家具关联列表，可为空列表
+
+  oneof message_content {
+    string          text  = 4; // 例："查询成功"
+    ValidationError error = 5; // 保留以保持结构一致性
+  }
+}
+
+// =============================================================================
+// 请求消息
+// =============================================================================
+
+// BindFurnitureRequest —— 绑定家具到用户的请求体。
+// 对应接口：POST /api/user-furniture/bindFurnitureToUser/
+message BindFurnitureRequest {
+  int32 furniture_id = 1; // 要绑定的家具 ID，必须已存在
+}
+
+// UnbindFurnitureRequest —— 解绑家具与用户的请求体。
+// 对应接口：POST /api/user-furniture/unbindFurnitureFromUser/
+message UnbindFurnitureRequest {
+  int32 furniture_id = 1; // 要解绑的家具 ID
+}
+
+// GET dirFurnitureListByUser 无需请求体，用户身份从 JWT 中自动获取。

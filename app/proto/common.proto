@@ -1,0 +1,80 @@
+// =============================================================================
+// common.proto  —  通用响应信封（Generic Response Envelope）
+//
+// 作用：
+//   为所有尚未定义专属强类型消息的模块提供通用的 protobuf 响应包装，
+//   保持与现有 JSON 响应格式（result / success / data / message）完全一致。
+//
+// 使用场景：
+//   - pet_action、pet_model、user_task、user_task_action_relation 等模块
+//     在尚未单独定义 .proto 文件前，均通过此信封序列化响应。
+//   - 当 ProtobufRenderer 在 proto_registry 中找不到对应模块的强类型 builder 时，
+//     自动回退（fallback）使用此消息。
+//
+// 编译方式（生成 common_pb2.py）：
+//   venv/Scripts/python.exe -m grpc_tools.protoc \
+//     -I. \
+//     -Ivenv/Lib/site-packages/grpc_tools/_proto \
+//     --python_out=. \
+//     app/proto/common.proto
+//
+// 与 user.proto 的关系：
+//   user.proto 为用户模块定义了强类型响应（UserResponse / UserLoginResponse），
+//   具有更精确的字段类型约束。
+//   common.proto 是所有其他模块的兜底方案，设计更灵活但类型约束较弱。
+// =============================================================================
+
+syntax = "proto3";
+
+// 包名：与 user.proto 保持一致，同属 aipet 命名空间。
+package aipet;
+
+// 引入 google.protobuf.Value：
+//   Value 是 protobuf 中的动态类型，可以表示 null / bool / number / string /
+//   object（Struct）/ array（ListValue），相当于 JSON 中任意类型的值。
+//   之所以在通用信封中使用 Value 而非具体类型，是因为不同模块的 data 字段
+//   结构差异很大（有时是对象，有时是列表，有时是 null），无法用单一强类型覆盖。
+import "google/protobuf/struct.proto";
+
+// ValidationError —— DRF 序列化器字段级校验错误的结构化表示。
+//
+// 在所有模块的强类型响应消息中共用（user / pet_action / pet_model / user_task 等）。
+// 放在此公共文件，各模块的 .proto 只需 import "app/proto/common.proto" 即可引用。
+//
+// DRF 返回的校验错误 JSON 格式：
+//   { "user_phone_number": ["手机号已存在"], "task_name": ["任务名不能为空"] }
+//
+// 对应 proto 结构：
+//   fields["user_phone_number"].values[0].string_value = "手机号已存在"
+//
+// map<string, ListValue>：key 为字段名，value 为该字段的一组错误信息列表。
+message ValidationError {
+  map<string, google.protobuf.ListValue> fields = 1;
+}
+
+// ApiEnvelope —— 通用 API 响应信封。
+//
+// 对应项目统一 JSON 响应格式（app/utils.py 中 success_response / error_response）：
+//   成功：{ "result": "success", "success": true,  "data": {...}, "message": "操作成功" }
+//   失败：{ "result": "fail",    "success": false, "data": null,  "message": "错误说明" }
+//
+// 字段说明：
+//   result  —— 固定字符串："success" 或 "fail"，与 success 字段冗余，
+//               保留是为了向前兼容旧的 JSON 客户端解析习惯。
+//   success —— bool，true 表示业务成功，false 表示失败。
+//   data    —— 动态载荷，可为 object / array / scalar / null。
+//               成功时为业务数据，失败时通常为 null。
+//   message —— 动态说明，可为普通字符串（如"操作成功"）
+//               或结构化校验错误对象（如 {"field": ["错误"]}）。
+//               使用 Value 而非 string 是为了兼容 DRF 返回的校验错误 dict。
+//
+// 注意：
+//   user 模块已升级为强类型消息（UserResponse / UserLoginResponse），
+//   data 和 message 字段均有明确类型，不再使用此信封。
+//   此消息专供其他模块在迁移完成前使用。
+message ApiEnvelope {
+  string               result  = 1; // "success" | "fail"
+  bool                 success = 2; // true | false
+  google.protobuf.Value data    = 3; // 业务数据：object | array | scalar | null
+  google.protobuf.Value message = 4; // 说明文本或校验错误对象
+}
