@@ -80,7 +80,7 @@ class UserTaskViewSet(OwnedQuerySetMixin, OwnedObjectMixin, viewsets.GenericView
                 return error_response(clean_data['detail'], status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
             return error_response(clean_data['detail'], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # ③ 预处理成功，创建 UserTask 记录
+        # ③ 预处理成功，创建 UserTask 记录，并将用户状态更新为 1
         task_obj = UserTask.objects.create(
             user_task_id=task_id,
             user=request.user,
@@ -90,6 +90,9 @@ class UserTaskViewSet(OwnedQuerySetMixin, OwnedObjectMixin, viewsets.GenericView
             pet_breed=clean_data['pet_breed'],
             pet_type=clean_data['pet_type'],
         )
+        # 用户状态改为1，即用户成功完成图片上传但未收到贴图的状态
+        request.user.user_status = 1
+        request.user.save(update_fields=['user_status'])
 
         # ④ 提交 Meshy
         ok, meshy_data = workflow_meshy(task_obj)
@@ -199,4 +202,70 @@ class UserTaskViewSet(OwnedQuerySetMixin, OwnedObjectMixin, viewsets.GenericView
         if not ok:
             return error_response(data['detail'], status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # 用户状态改为2，即用户成功完成图片上传且收到贴图的状态
+        # 目前是在轮询逻辑中更新，如果不轮询或轮询中断，状态无法变更，在生产环境中是个风险
+        if data.get('workflow_status') == 'DONE':
+            request.user.user_status = 2
+            request.user.save(update_fields=['user_status'])
+
         return success_response(data, message='查询成功')
+
+    @action(detail=False, methods=['get'], url_path='dirPetModelId')
+    def dir_pet_model_id(self, request):
+        """
+        查询用户任务的 pet_model_id。
+        查询参数：
+          /api/models/dirPetModelId/?user_task_id=uuid-string
+        """
+        user_task_id = request.query_params.get('user_task_id')
+        if not user_task_id:
+            return error_response('请提供 user_task_id', status_code=status.HTTP_400_BAD_REQUEST)
+
+        task_obj, denied = self.get_owned_or_403(
+            request, self.get_queryset(),
+            not_found_msg='任务不存在',
+            user_task_id=user_task_id,
+        )
+        if denied:
+            return denied
+
+        return success_response(
+            {'user_task_id': task_obj.user_task_id, 'pet_model_id': task_obj.pet_model_id},
+            message='查询成功',
+        )
+
+    @action(detail=False, methods=['put', 'patch'], url_path='updatePetModelId')
+    def update_pet_model_id(self, request):
+        """
+        更新用户任务的 pet_model_id。
+        请求体示例：
+        {
+            "user_task_id": "uuid-string",
+            "pet_model_id": 123
+        }
+        """
+        user_task_id = request.data.get('user_task_id')
+        if not user_task_id:
+            return error_response('请提供 user_task_id', status_code=status.HTTP_400_BAD_REQUEST)
+
+        pet_model_id = request.data.get('pet_model_id')
+        if pet_model_id is None:
+            return error_response('请提供 pet_model_id', status_code=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(pet_model_id, int):
+            return error_response('pet_model_id 必须为整数', status_code=status.HTTP_400_BAD_REQUEST)
+
+        task_obj, denied = self.get_owned_or_403(
+            request, self.get_queryset(),
+            not_found_msg='任务不存在',
+            user_task_id=user_task_id,
+        )
+        if denied:
+            return denied
+
+        task_obj.pet_model_id = pet_model_id
+        task_obj.save(update_fields=['pet_model_id'])
+
+        return success_response(
+            {'user_task_id': task_obj.user_task_id, 'pet_model_id': task_obj.pet_model_id},
+            message='更新成功',
+        )

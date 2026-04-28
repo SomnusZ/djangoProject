@@ -69,6 +69,8 @@ class UserTask(models.Model):
     texture_clean_path = models.CharField(max_length=512, blank=True, default='', verbose_name='贴图路径')
     # 工作流错误信息
     workflow_error = models.TextField(blank=True, default='', verbose_name='错误信息')
+    # 宠物模型ID：0=未生成，生成完成后由业务层写入
+    pet_model_id = models.IntegerField(default=0, verbose_name='宠物模型ID')
 
     class Meta:
         db_table = 'user_task'

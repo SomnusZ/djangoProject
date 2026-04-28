@@ -22,6 +22,7 @@ class UserTaskSerializer(serializers.ModelSerializer):
             'user_task_id',
             'user_id',
             'task_name',
+            'pet_model_id',
         )
 
 
