@@ -131,6 +131,10 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # 默认主键类型
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Meshy 基础宠物模型路径（相对项目根目录）
+# 首次调用 submitMeshyTask 时懒加载，base64 编码后缓存在内存中
+MESHY_MODEL_PATH = str(BASE_DIR / 'aipet' / '3Dmodels' / 'Sample' / 'model0107.fbx')
+
 # DRF 配置
 REST_FRAMEWORK = {
     # 启用 JWT 认证，启用自定义user实体

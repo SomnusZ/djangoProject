@@ -92,10 +92,10 @@ class UpdateUserTaskSerializer(serializers.ModelSerializer):
 class DirUserTaskQuerySerializer(serializers.Serializer):
     """
     查询用户任务信息序列化器。
-    支持 user_task_id 查询。
+    支持 user_task_id 查询（UUID 字符串）。
     """
 
-    user_task_id = serializers.IntegerField(required=True)
+    user_task_id = serializers.CharField(required=True)
 
 
 class DirUserTaskListByUserSerializer(serializers.Serializer):

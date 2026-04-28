@@ -18,7 +18,9 @@
       "Bash(venv/Scripts/python.exe manage.py makemigrations furniture user_furniture_relation)",
       "Bash(venv/Scripts/python.exe manage.py makemigrations property user_property_relation)",
       "Bash(venv/Scripts/python.exe -m grpc_tools.protoc -I. -Ivenv/Lib/site-packages/grpc_tools/_proto --python_out=. app/proto/wealth.proto app/proto/user_wealth_relation.proto app/proto/playtask.proto app/proto/user_playtask_relation.proto app/proto/achievement.proto app/proto/user_achievement_relation.proto app/proto/furniture.proto app/proto/user_furniture_relation.proto app/proto/property.proto app/proto/user_property_relation.proto)",
-      "Bash(venv\\\\Scripts\\\\python.exe manage.py makemigrations user --name=\"add_user_status\")"
+      "Bash(venv\\\\Scripts\\\\python.exe manage.py makemigrations user --name=\"add_user_status\")",
+      "Bash(.\\\\venv\\\\Scripts\\\\python.exe manage.py makemigrations user_task --name add_workflow_fields)",
+      "PowerShell(.\\\\venv\\\\Scripts\\\\python.exe manage.py makemigrations user_task --name add_workflow_fields)"
     ]
   }
 }

@@ -10,7 +10,7 @@
       --card:rgba(255,255,255,.08); --card-border:rgba(255,255,255,.18);
       --text:#e2e8f0; --muted:#94a3b8;
       --accent:#22c55e; --accent-2:#38bdf8; --accent-3:#a78bfa;
-      --danger:#f97316; --shadow:0 20px 50px rgba(0,0,0,.35);
+      --danger:#f97316; --warn:#fbbf24; --shadow:0 20px 50px rgba(0,0,0,.35);
     }
     * { box-sizing:border-box; }
     body {
@@ -44,6 +44,7 @@
     }
     .tab-btn:hover { color:var(--text); background:rgba(255,255,255,.06); }
     .tab-btn.active { background:linear-gradient(135deg,var(--accent),#16a34a); color:#0b1220; font-weight:600; }
+    .tab-btn.poll-tab.active { background:linear-gradient(135deg,#8b5cf6,#6d28d9); }
     .tab-sub { font-size:11px; opacity:.7; margin-left:4px; }
     .panel { display:none; }
     .panel.active { display:block; }
@@ -58,13 +59,30 @@
     form { display:grid; gap:14px; }
     label { display:grid; gap:6px; font-size:13px; color:var(--muted); }
     .field { position:relative; }
-    input {
+    input[type=text],input[type=number] {
       width:100%; padding:11px 14px; border-radius:10px;
       border:1px solid transparent; background:rgba(15,23,42,.7);
       color:var(--text); font-size:14px; outline:none;
       transition:border .2s ease, box-shadow .2s ease;
     }
-    input:focus { border-color:var(--accent-2); box-shadow:0 0 0 3px rgba(56,189,248,.2); }
+    input[type=text]:focus,input[type=number]:focus {
+      border-color:var(--accent-2); box-shadow:0 0 0 3px rgba(56,189,248,.2);
+    }
+    /* 文件上传区域 */
+    .upload-zone {
+      border:2px dashed var(--card-border); border-radius:12px;
+      padding:24px 16px; text-align:center; cursor:pointer;
+      transition:border-color .2s, background .2s;
+      position:relative;
+    }
+    .upload-zone:hover, .upload-zone.drag { border-color:var(--accent-2); background:rgba(56,189,248,.06); }
+    .upload-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .upload-icon { font-size:28px; margin-bottom:8px; }
+    .upload-label { font-size:13px; color:var(--muted); }
+    .upload-label strong { color:var(--accent-2); }
+    .upload-preview { display:none; margin-top:10px; }
+    .upload-preview img { max-height:120px; border-radius:8px; border:1px solid var(--card-border); }
+    .upload-name { font-size:12px; color:var(--accent); margin-top:6px; }
     .hint { font-size:12px; color:var(--muted); line-height:1.5; }
     .info-note {
       background:rgba(56,189,248,.08); border:1px solid rgba(56,189,248,.25);
@@ -77,13 +95,26 @@
     .mode label { display:flex; align-items:center; gap:6px; cursor:pointer; color:var(--text); font-size:13px; }
     .mode input[type=radio] { accent-color:var(--accent-3); width:auto; }
     .actions { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
-    button[type=submit] {
+    button[type=submit], .btn-primary {
       padding:11px 20px; border-radius:10px; border:none;
       background:linear-gradient(135deg,var(--accent),#16a34a);
       color:#0b1220; font-weight:600; cursor:pointer;
       transition:transform .2s ease, box-shadow .2s ease;
     }
-    button[type=submit]:hover { transform:translateY(-1px); box-shadow:0 10px 20px rgba(34,197,94,.3); }
+    button[type=submit]:hover, .btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 20px rgba(34,197,94,.3); }
+    button[type=submit]:disabled, .btn-primary:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+    .btn-poll {
+      padding:11px 20px; border-radius:10px; border:none;
+      background:linear-gradient(135deg,#8b5cf6,#6d28d9);
+      color:#fff; font-weight:600; cursor:pointer;
+      transition:transform .2s ease, box-shadow .2s ease;
+    }
+    .btn-poll:hover { transform:translateY(-1px); box-shadow:0 10px 20px rgba(139,92,246,.3); }
+    .btn-stop {
+      padding:11px 20px; border-radius:10px; border:none;
+      background:linear-gradient(135deg,#ef4444,#b91c1c);
+      color:#fff; font-weight:600; cursor:pointer; display:none;
+    }
     .ghost {
       padding:11px 16px; border-radius:10px; border:1px solid var(--card-border);
       background:transparent; color:var(--text); cursor:pointer;
@@ -91,14 +122,31 @@
     .status { min-height:20px; font-size:13px; color:var(--muted); }
     .status.ok { color:var(--accent); }
     .status.err { color:var(--danger); }
-    .req-panel { display:none; margin-bottom:16px; }
-    .req-panel h3 { margin:0 0 8px; font-size:13px; color:#c4b5fd; }
-    .req-meta { display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-bottom:8px; }
-    .req-meta code { color:#c4b5fd; background:rgba(167,139,250,.15); border:1px solid rgba(167,139,250,.3); border-radius:8px; padding:2px 8px; }
+    .status.warn { color:var(--warn); }
+    /* 工作流状态卡片 */
+    .wf-status-bar {
+      display:none; border-radius:12px; padding:14px 16px;
+      border:1px solid var(--card-border); margin-bottom:12px;
+      background:rgba(15,23,42,.5);
+    }
+    .wf-status-bar.show { display:block; }
+    .wf-label { font-size:11px; color:var(--muted); font-weight:600; letter-spacing:.06em; text-transform:uppercase; margin-bottom:6px; }
+    .wf-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      padding:5px 12px; border-radius:999px; font-size:13px; font-weight:600;
+    }
+    .wf-pending    { background:rgba(148,163,184,.15); color:#94a3b8; border:1px solid rgba(148,163,184,.3); }
+    .wf-cleaned    { background:rgba(56,189,248,.15);  color:#38bdf8; border:1px solid rgba(56,189,248,.3); }
+    .wf-meshy      { background:rgba(167,139,250,.15); color:#a78bfa; border:1px solid rgba(167,139,250,.3); }
+    .wf-done       { background:rgba(34,197,94,.15);   color:#22c55e; border:1px solid rgba(34,197,94,.3); }
+    .wf-error      { background:rgba(249,115,22,.15);  color:#f97316; border:1px solid rgba(249,115,22,.3); }
+    .wf-dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+    .wf-dot.spin { animation:pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .poll-counter { font-size:12px; color:var(--muted); margin-top:6px; }
     .meta { display:grid; gap:8px; margin-bottom:12px; font-size:12px; color:var(--muted); }
     .meta code { color:#bae6fd; background:rgba(56,189,248,.15); border:1px solid rgba(56,189,248,.3); border-radius:8px; padding:2px 8px; }
     .section-label { font-size:11px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
-    .download-link { display:none; color:#86efac; font-size:12px; text-decoration:underline; cursor:pointer; }
     pre {
       margin:0; padding:14px; border-radius:12px;
       background:rgba(15,23,42,.8); color:#e2e8f0;
@@ -112,9 +160,9 @@
 <body>
   <div class="shell">
     <div class="hero">
-      <span class="badge">用户任务模块（请求 + 响应 Protobuf 双向测试）</span>
+      <span class="badge">用户任务 · AI 宠物生成工作流测试</span>
       <h1>用户任务接口测试</h1>
-      <p>创建 · 查询 · 修改 · 列表</p>
+      <p>创建（含图片上传）· 查询 · 修改 · 列表 · 轮询 Meshy 状态</p>
     </div>
 
     <nav class="tab-nav">
@@ -122,62 +170,52 @@
       <button class="tab-btn" data-tab="query">查询<span class="tab-sub">GET dirUserTask</span></button>
       <button class="tab-btn" data-tab="update">修改<span class="tab-sub">PUT updateUserTask</span></button>
       <button class="tab-btn" data-tab="list">列表<span class="tab-sub">GET dirUserTaskListByUser</span></button>
+      <button class="tab-btn poll-tab" data-tab="poll">轮询<span class="tab-sub">GET queryMeshyTask</span></button>
     </nav>
 
-    <!-- ===== 创建 ===== -->
+    <!-- ===== 创建（含图片上传 + 自动跳转轮询）===== -->
     <div class="panel active" id="panel-create">
       <div class="grid">
         <div class="card">
-          <h2>创建任务</h2>
-          <p class="card-meta">POST /api/models/createUserTask/ · 需登录 · user_id 从 token 自动取得</p>
-          <form id="form-create">
+          <h2>创建任务 · 上传图片</h2>
+          <p class="card-meta">POST /api/models/createUserTask/ · multipart/form-data · 需登录</p>
+          <p class="hint">流程：图片预处理成功后创建任务记录，并自动提交 Meshy 3D 生成。</p>
+          <form id="form-create" enctype="multipart/form-data">
             <label>task_name（同一用户下不可重复）
               <span class="field"><input type="text" name="task_name" placeholder="例如：我的任务" required /></span>
+            </label>
+            <label>宠物图片（≤5MB，支持 jpg / png / webp）
+              <div class="upload-zone" id="upload-zone">
+                <input type="file" name="image" accept="image/*" id="image-input" required />
+                <div class="upload-icon">🐾</div>
+                <div class="upload-label">点击选择或 <strong>拖拽</strong> 图片到此处</div>
+              </div>
+              <div class="upload-preview" id="upload-preview">
+                <img id="preview-img" src="" alt="预览" />
+                <div class="upload-name" id="preview-name"></div>
+              </div>
             </label>
             <label>access_token（留空从 localStorage 读取）
               <span class="field"><input type="text" name="access_token" /></span>
             </label>
-            <div class="divider"></div>
-            <div class="format-group">
-              <span class="format-title">请求格式（Content-Type）</span>
-              <div class="mode" id="create-reqModeGroup">
-                <label><input type="radio" name="create_req_mode" value="json" checked /> JSON</label>
-                <label><input type="radio" name="create_req_mode" value="protobuf" /> Protobuf 二进制</label>
-              </div>
-              <div class="hint" id="create-reqHint">使用 JSON 格式发送请求体。</div>
-            </div>
-            <div class="format-group">
-              <span class="format-title">响应格式（Accept）</span>
-              <div class="mode">
-                <label><input type="radio" name="create_resp_mode" value="json" checked /> JSON</label>
-                <label><input type="radio" name="create_resp_mode" value="protobuf" /> Protobuf 二进制</label>
-              </div>
-            </div>
             <div class="status" id="status-create">准备提交</div>
             <div class="actions">
-              <button type="submit">执行</button>
+              <button type="submit" id="btn-create-submit">执行</button>
               <button type="button" class="ghost" data-reset="create">清空</button>
             </div>
           </form>
         </div>
         <div class="card">
           <h2>测试结果</h2>
-          <div class="req-panel" id="create-reqPanel">
-            <h3>▶ 已发送请求（Protobuf 二进制）</h3>
-            <div class="req-meta">
-              <span>Content-Type：<code>application/x-protobuf</code></span>
-              <span>字节长度：<code id="create-reqBytes">-</code></span>
-            </div>
-            <pre id="create-reqHex">等待发送...</pre>
-          </div>
           <div class="meta">
             <div class="section-label">服务器响应</div>
             <div>HTTP 状态：<code id="create-metaStatus">-</code></div>
             <div>Content-Type：<code id="create-metaType">-</code></div>
-            <div>字节长度：<code id="create-metaBytes">-</code></div>
-            <a id="create-downloadBin" class="download-link" download="user_task_create_response.pb">下载 protobuf 二进制</a>
           </div>
           <pre id="result-create">等待提交...</pre>
+          <div style="margin-top:12px; display:none;" id="create-poll-hint">
+            <div class="info-note">✅ 任务已创建，task_id 已自动填入「轮询」页签，点击切换查看进度。</div>
+          </div>
         </div>
       </div>
     </div>
@@ -189,21 +227,14 @@
           <h2>查询单个任务</h2>
           <p class="card-meta">GET /api/models/dirUserTask/ · 需登录 · 只能查询本人任务</p>
           <form id="form-query">
-            <label>user_task_id
-              <span class="field"><input type="number" name="user_task_id" required /></span>
+            <label>user_task_id（UUID 字符串）
+              <span class="field"><input type="text" name="user_task_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></span>
             </label>
             <label>access_token（留空从 localStorage 读取）
               <span class="field"><input type="text" name="access_token" /></span>
             </label>
             <div class="divider"></div>
-            <div class="info-note">ℹ️ GET 请求通过 URL Query String 传参，不使用请求体，无需 Protobuf 请求编码。</div>
-            <div class="format-group">
-              <span class="format-title">响应格式（Accept）</span>
-              <div class="mode">
-                <label><input type="radio" name="query_resp_mode" value="json" checked /> JSON</label>
-                <label><input type="radio" name="query_resp_mode" value="protobuf" /> Protobuf 二进制</label>
-              </div>
-            </div>
+            <div class="info-note">ℹ️ GET 请求通过 URL Query String 传参。</div>
             <div class="status" id="status-query">准备提交</div>
             <div class="actions">
               <button type="submit">执行</button>
@@ -217,8 +248,6 @@
             <div class="section-label">服务器响应</div>
             <div>HTTP 状态：<code id="query-metaStatus">-</code></div>
             <div>Content-Type：<code id="query-metaType">-</code></div>
-            <div>字节长度：<code id="query-metaBytes">-</code></div>
-            <a id="query-downloadBin" class="download-link" download="user_task_query_response.pb">下载 protobuf 二进制</a>
           </div>
           <pre id="result-query">等待提交...</pre>
         </div>
@@ -232,31 +261,15 @@
           <h2>修改任务</h2>
           <p class="card-meta">PUT /api/models/updateUserTask/ · 需登录 · 仅允许修改 task_name</p>
           <form id="form-update">
-            <label>user_task_id
-              <span class="field"><input type="number" name="user_task_id" required /></span>
+            <label>user_task_id（UUID 字符串）
+              <span class="field"><input type="text" name="user_task_id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></span>
             </label>
-            <label>task_name（新名称，同一用户下不可重复）
+            <label>task_name（新名称）
               <span class="field"><input type="text" name="task_name" required /></span>
             </label>
             <label>access_token（留空从 localStorage 读取）
               <span class="field"><input type="text" name="access_token" /></span>
             </label>
-            <div class="divider"></div>
-            <div class="format-group">
-              <span class="format-title">请求格式（Content-Type）</span>
-              <div class="mode" id="update-reqModeGroup">
-                <label><input type="radio" name="update_req_mode" value="json" checked /> JSON</label>
-                <label><input type="radio" name="update_req_mode" value="protobuf" /> Protobuf 二进制</label>
-              </div>
-              <div class="hint" id="update-reqHint">使用 JSON 格式发送请求体。</div>
-            </div>
-            <div class="format-group">
-              <span class="format-title">响应格式（Accept）</span>
-              <div class="mode">
-                <label><input type="radio" name="update_resp_mode" value="json" checked /> JSON</label>
-                <label><input type="radio" name="update_resp_mode" value="protobuf" /> Protobuf 二进制</label>
-              </div>
-            </div>
             <div class="status" id="status-update">准备提交</div>
             <div class="actions">
               <button type="submit">执行</button>
@@ -266,20 +279,10 @@
         </div>
         <div class="card">
           <h2>测试结果</h2>
-          <div class="req-panel" id="update-reqPanel">
-            <h3>▶ 已发送请求（Protobuf 二进制）</h3>
-            <div class="req-meta">
-              <span>Content-Type：<code>application/x-protobuf</code></span>
-              <span>字节长度：<code id="update-reqBytes">-</code></span>
-            </div>
-            <pre id="update-reqHex">等待发送...</pre>
-          </div>
           <div class="meta">
             <div class="section-label">服务器响应</div>
             <div>HTTP 状态：<code id="update-metaStatus">-</code></div>
             <div>Content-Type：<code id="update-metaType">-</code></div>
-            <div>字节长度：<code id="update-metaBytes">-</code></div>
-            <a id="update-downloadBin" class="download-link" download="user_task_update_response.pb">下载 protobuf 二进制</a>
           </div>
           <pre id="result-update">等待提交...</pre>
         </div>
@@ -291,19 +294,12 @@
       <div class="grid">
         <div class="card">
           <h2>我的任务列表</h2>
-          <p class="card-meta">GET /api/models/dirUserTaskListByUser/ · 需登录 · 返回当前用户所有任务</p>
+          <p class="card-meta">GET /api/models/dirUserTaskListByUser/ · 需登录 · 按创建时间倒序</p>
           <form id="form-list">
             <label>access_token（留空从 localStorage 读取）
               <span class="field"><input type="text" name="access_token" /></span>
             </label>
             <div class="info-note">ℹ️ 无需其他参数，由 token 自动识别用户。</div>
-            <div class="format-group">
-              <span class="format-title">响应格式（Accept）</span>
-              <div class="mode">
-                <label><input type="radio" name="list_resp_mode" value="json" checked /> JSON</label>
-                <label><input type="radio" name="list_resp_mode" value="protobuf" /> Protobuf 二进制</label>
-              </div>
-            </div>
             <div class="status" id="status-list">准备提交</div>
             <div class="actions">
               <button type="submit">执行</button>
@@ -317,108 +313,78 @@
             <div class="section-label">服务器响应</div>
             <div>HTTP 状态：<code id="list-metaStatus">-</code></div>
             <div>Content-Type：<code id="list-metaType">-</code></div>
-            <div>字节长度：<code id="list-metaBytes">-</code></div>
-            <a id="list-downloadBin" class="download-link" download="user_task_list_response.pb">下载 protobuf 二进制</a>
           </div>
           <pre id="result-list">等待提交...</pre>
         </div>
       </div>
     </div>
-  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/protobufjs@7/dist/protobuf.min.js"></script>
+    <!-- ===== 轮询 Meshy 状态 ===== -->
+    <div class="panel" id="panel-poll">
+      <div class="grid">
+        <div class="card">
+          <h2>轮询 Meshy 任务状态</h2>
+          <p class="card-meta">GET /api/models/queryMeshyTask/ · 需登录 · 每 5 秒自动刷新</p>
+          <form id="form-poll">
+            <label>user_task_id（UUID 字符串）
+              <span class="field"><input type="text" name="user_task_id" id="poll-task-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></span>
+            </label>
+            <label>access_token（留空从 localStorage 读取）
+              <span class="field"><input type="text" name="access_token" id="poll-token" /></span>
+            </label>
+            <div class="info-note">ℹ️ 点击「开始轮询」后每 5 秒自动查询一次，直到状态变为终态（DONE / FAILED / ERROR）或手动停止。</div>
+            <div class="status" id="status-poll">准备轮询</div>
+            <div class="actions">
+              <button type="submit" class="btn-poll" id="btn-poll-start">开始轮询</button>
+              <button type="button" class="btn-stop" id="btn-poll-stop">停止</button>
+              <button type="button" class="ghost" id="btn-poll-once">查询一次</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>工作流状态</h2>
+          <!-- 状态徽章 -->
+          <div class="wf-status-bar" id="wf-status-bar">
+            <div class="wf-label">当前状态</div>
+            <div id="wf-badge-wrap"></div>
+            <div class="poll-counter" id="poll-counter"></div>
+          </div>
+          <div class="meta">
+            <div class="section-label">最新响应</div>
+            <div>HTTP 状态：<code id="poll-metaStatus">-</code></div>
+            <div>查询次数：<code id="poll-count">0</code></div>
+          </div>
+          <pre id="result-poll">等待轮询...</pre>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /shell -->
+
   <script>
-    const protoRoot = protobuf.Root.fromJSON({ nested: { aipet: { nested: {
-      CreateUserTaskRequest: { fields: { task_name: { id:1, type:"string", rule:"optional" } } },
-      UpdateUserTaskRequest: { fields: {
-        user_task_id: { id:1, type:"int32",  rule:"optional" },
-        task_name:    { id:2, type:"string", rule:"optional" }
-      }}
-    }}}});
-    const CreateTaskMsg = protoRoot.lookupType("aipet.CreateUserTaskRequest");
-    const UpdateTaskMsg = protoRoot.lookupType("aipet.UpdateUserTaskRequest");
-
     const $ = id => document.getElementById(id);
 
-    const toHex = (arr, ml=128, w=16) => {
-      const n = Math.min(arr.length, ml), l = [];
-      for (let i=0; i<n; i+=w) {
-        const c = Array.from(arr.slice(i, i+w));
-        l.push(`${c.map(b=>b.toString(16).padStart(2,"0")).join(" ").padEnd(w*3-1)}  ${c.map(b=>(b>=32&&b<127)?String.fromCharCode(b):".").join("")}`);
-      }
-      if (arr.length > ml) l.push(`... (共 ${arr.length} 字节，仅展示前 ${ml} 字节)`);
-      return l.join("\n");
-    };
-
-    const fmtErr = o => {
-      if (o==null) return "(empty)";
-      if (typeof o==="string") return o;
-      if (Array.isArray(o)) return o.map(fmtErr).join(" ; ");
-      if (typeof o==="object") return Object.entries(o).map(([k,v])=>`${k}: ${fmtErr(v)}`).join("\n");
-      return String(o);
-    };
-
+    /* ── 工具函数 ── */
     function setStatus(key, text, ok) {
       const el = $("status-" + key);
       el.textContent = text;
-      el.className = "status" + (ok===true?" ok":ok===false?" err":"");
+      el.className = "status" + (ok===true?" ok":ok===false?" err":ok==="warn"?" warn":"");
     }
-
-    function getToken(formData) {
-      return formData.get("access_token") || localStorage.getItem("access_token") || "";
+    function getToken(fd) {
+      return (fd ? fd.get("access_token") : null) || localStorage.getItem("access_token") || "";
     }
-
-    function resetMeta(prefix, hasReqPanel) {
-      $(`${prefix}-metaStatus`).textContent = "-";
-      $(`${prefix}-metaType`).textContent   = "-";
-      $(`${prefix}-metaBytes`).textContent  = "-";
-      $(`${prefix}-downloadBin`).style.display = "none";
-      $(`${prefix}-downloadBin`).removeAttribute("href");
-      if (hasReqPanel) {
-        $(`${prefix}-reqPanel`).style.display = "none";
-        $(`${prefix}-reqHex`).textContent = "等待发送...";
-      }
+    async function doFetch(url, opts) {
+      const res = await fetch(url, opts);
+      let data;
+      try { data = await res.json(); } catch(_) { data = null; }
+      return { res, data };
     }
-
-    async function handleProtoResp(res, prefix, protoName, protoFile, fallbackFn) {
-      const ct = (res.headers.get("content-type") || "").toLowerCase();
+    function showMeta(prefix, res) {
       $(`${prefix}-metaStatus`).textContent = String(res.status);
-      $(`${prefix}-metaType`).textContent   = ct || "(empty)";
-      if (ct.includes("application/x-protobuf")) {
-        const bytes = new Uint8Array(await res.arrayBuffer());
-        $(`${prefix}-metaBytes`).textContent = String(bytes.length);
-        const dl = $(`${prefix}-downloadBin`);
-        dl.href = URL.createObjectURL(new Blob([bytes], {type:"application/x-protobuf"}));
-        dl.style.display = "inline";
-        let out = `已收到 Protobuf 二进制响应（${protoName}）\n验证：\n  protoc --decode=aipet.${protoName} ${protoFile} < response.pb\n\n十六进制预览（前 128 字节）：\n` + toHex(bytes);
-        if (!res.ok && fallbackFn) {
-          try { const dj = await fallbackFn(); out += "\n\n可读错误信息：\n" + (dj ? fmtErr(dj.message ?? dj) : "(无法解析)"); } catch(_){}
-        }
-        $("result-" + prefix).textContent = out;
-        return res.ok;
-      } else {
-        const data = await res.json();
-        $(`${prefix}-metaBytes`).textContent = String(new TextEncoder().encode(JSON.stringify(data)).length);
-        $("result-" + prefix).textContent = JSON.stringify(data, null, 2);
-        return data?.success;
-      }
+      $(`${prefix}-metaType`).textContent   = res.headers.get("content-type") || "(empty)";
     }
 
-    function buildPostRequest(MsgType, payload, reqMode, respMode, token) {
-      let body, ct;
-      if (reqMode === "protobuf") {
-        const err = MsgType.verify(payload);
-        if (err) throw new Error("Protobuf 编码失败：" + err);
-        const bytes = MsgType.encode(MsgType.create(payload)).finish();
-        body = bytes; ct = "application/x-protobuf";
-      } else {
-        body = JSON.stringify(payload); ct = "application/json";
-      }
-      const headers = { "Content-Type": ct, "Accept": respMode==="protobuf"?"application/x-protobuf":"application/json" };
-      if (token) headers["Authorization"] = "Bearer " + token;
-      return { body, headers, isProto: reqMode==="protobuf" };
-    }
-
+    /* ── 页签切换 ── */
     document.querySelectorAll(".tab-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -427,114 +393,243 @@
         $("panel-" + btn.dataset.tab).classList.add("active");
       });
     });
+    function switchTab(name) {
+      document.querySelectorAll(".tab-btn").forEach(b => {
+        b.classList.toggle("active", b.dataset.tab === name);
+      });
+      document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+      $("panel-" + name).classList.add("active");
+    }
 
+    /* ── 清空按钮 ── */
     document.querySelectorAll("[data-reset]").forEach(btn => {
       btn.addEventListener("click", () => {
         const k = btn.dataset.reset;
-        $("form-" + k).reset();
+        $("form-" + k)?.reset();
         $("result-" + k).textContent = "等待提交...";
         setStatus(k, "已清空");
-        resetMeta(k, ["create","update"].includes(k));
+        if (k === "create") {
+          $("upload-preview").style.display = "none";
+          $("create-poll-hint").style.display = "none";
+        }
       });
     });
 
-    $("create-reqModeGroup").addEventListener("change", e => {
-      $("create-reqHint").textContent = e.target.value==="protobuf"
-        ? "使用 protobufjs 将数据编码为 CreateUserTaskRequest 二进制。" : "使用 JSON 格式发送请求体。";
+    /* ── 图片预览 ── */
+    $("image-input").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const prev = $("upload-preview");
+      prev.style.display = "block";
+      $("preview-img").src = URL.createObjectURL(file);
+      $("preview-name").textContent = `${file.name}  (${(file.size/1024).toFixed(1)} KB)`;
     });
-    $("update-reqModeGroup").addEventListener("change", e => {
-      $("update-reqHint").textContent = e.target.value==="protobuf"
-        ? "使用 protobufjs 将数据编码为 UpdateUserTaskRequest 二进制。" : "使用 JSON 格式发送请求体。";
+    const zone = $("upload-zone");
+    zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("drag"); });
+    zone.addEventListener("dragleave", () => zone.classList.remove("drag"));
+    zone.addEventListener("drop", e => {
+      e.preventDefault(); zone.classList.remove("drag");
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        $("image-input").files = e.dataTransfer.files;
+        $("image-input").dispatchEvent(new Event("change"));
+      }
     });
 
+    /* ── 创建任务 ── */
     $("form-create").addEventListener("submit", async e => {
       e.preventDefault();
-      const fd      = new FormData(e.target);
-      const token   = getToken(fd);
-      const reqMode = fd.get("create_req_mode")  || "json";
-      const respMode= fd.get("create_resp_mode") || "json";
-      const payload = { task_name: fd.get("task_name") };
-      setStatus("create", "请求中...");
-      resetMeta("create", true);
-      $("result-create").textContent = "请求中...";
-      let req;
-      try { req = buildPostRequest(CreateTaskMsg, payload, reqMode, respMode, token); }
-      catch(err) { setStatus("create", err.message, false); return; }
-      if (req.isProto) {
-        $("create-reqPanel").style.display = "block";
-        $("create-reqBytes").textContent   = String(req.body.length);
-        $("create-reqHex").textContent     = toHex(req.body);
-      }
+      const fd     = new FormData(e.target);
+      const token  = getToken(fd);
+      const submit = $("btn-create-submit");
+      submit.disabled = true;
+      setStatus("create", "图片预处理中（YOLO + 去背景），请稍候...", "warn");
+      $("result-create").textContent = "处理中...";
+      $("create-poll-hint").style.display = "none";
+
+      // 构建 multipart FormData（只传 task_name + image，不传 access_token 字段）
+      const body = new FormData();
+      body.append("task_name", fd.get("task_name"));
+      body.append("image", fd.get("image"));
+
+      const headers = {};
+      if (token) headers["Authorization"] = "Bearer " + token;
+
       try {
-        const res = await fetch("/api/models/createUserTask/", { method:"POST", headers:req.headers, body:req.body });
-        const ok = await handleProtoResp(res, "create", "UserTaskResponse", "app/proto/user_task.proto",
-          async () => { const r = await fetch("/api/models/createUserTask/",{method:"POST",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)}); return r.json().catch(()=>null); }
-        );
-        setStatus("create", ok ? "✓ 创建成功" : "创建失败", ok);
-      } catch(err) { setStatus("create", "请求失败: "+err.message, false); $("result-create").textContent = err.message; }
+        const { res, data } = await doFetch("/api/models/createUserTask/", {
+          method: "POST", headers, body
+        });
+        showMeta("create", res);
+        $("result-create").textContent = JSON.stringify(data, null, 2);
+
+        if (data?.success) {
+          const taskId = data?.data?.task_id || "";
+          setStatus("create", `✓ 任务创建成功  task_id: ${taskId}`, true);
+          // 自动填入轮询页签
+          if (taskId) {
+            $("poll-task-id").value = taskId;
+            $("create-poll-hint").style.display = "block";
+          }
+        } else {
+          setStatus("create", `失败：${data?.message || res.status}`, false);
+        }
+      } catch(err) {
+        setStatus("create", "请求失败: " + err.message, false);
+        $("result-create").textContent = err.message;
+      } finally {
+        submit.disabled = false;
+      }
     });
 
+    /* ── 查询单个任务 ── */
     $("form-query").addEventListener("submit", async e => {
       e.preventDefault();
-      const fd      = new FormData(e.target);
-      const token   = getToken(fd);
-      const respMode= fd.get("query_resp_mode") || "json";
-      const params  = new URLSearchParams({ user_task_id: fd.get("user_task_id") });
-      const headers = { "Accept": respMode==="protobuf"?"application/x-protobuf":"application/json" };
+      const fd    = new FormData(e.target);
+      const token = getToken(fd);
+      const params = new URLSearchParams({ user_task_id: fd.get("user_task_id") });
+      const headers = {};
       if (token) headers["Authorization"] = "Bearer " + token;
       setStatus("query", "请求中...");
-      resetMeta("query", false);
       $("result-query").textContent = "请求中...";
       try {
-        const res = await fetch("/api/models/dirUserTask/?" + params, { method:"GET", headers });
-        const ok = await handleProtoResp(res, "query", "UserTaskResponse", "app/proto/user_task.proto", null);
-        setStatus("query", ok ? "✓ 查询成功" : "查询失败", ok);
-      } catch(err) { setStatus("query", "请求失败: "+err.message, false); $("result-query").textContent = err.message; }
+        const { res, data } = await doFetch("/api/models/dirUserTask/?" + params, { method:"GET", headers });
+        showMeta("query", res);
+        $("result-query").textContent = JSON.stringify(data, null, 2);
+        setStatus("query", data?.success ? "✓ 查询成功" : "查询失败", data?.success);
+      } catch(err) { setStatus("query","请求失败: "+err.message,false); $("result-query").textContent=err.message; }
     });
 
+    /* ── 修改任务 ── */
     $("form-update").addEventListener("submit", async e => {
       e.preventDefault();
-      const fd      = new FormData(e.target);
-      const token   = getToken(fd);
-      const reqMode = fd.get("update_req_mode")  || "json";
-      const respMode= fd.get("update_resp_mode") || "json";
-      const payload = { user_task_id: parseInt(fd.get("user_task_id")||"0"), task_name: fd.get("task_name") };
+      const fd    = new FormData(e.target);
+      const token = getToken(fd);
+      const payload = { user_task_id: fd.get("user_task_id"), task_name: fd.get("task_name") };
+      const headers = { "Content-Type":"application/json" };
+      if (token) headers["Authorization"] = "Bearer " + token;
       setStatus("update", "请求中...");
-      resetMeta("update", true);
       $("result-update").textContent = "请求中...";
-      let req;
-      try { req = buildPostRequest(UpdateTaskMsg, payload, reqMode, respMode, token); }
-      catch(err) { setStatus("update", err.message, false); return; }
-      if (req.isProto) {
-        $("update-reqPanel").style.display = "block";
-        $("update-reqBytes").textContent   = String(req.body.length);
-        $("update-reqHex").textContent     = toHex(req.body);
-      }
       try {
-        const res = await fetch("/api/models/updateUserTask/", { method:"PUT", headers:req.headers, body:req.body });
-        const ok = await handleProtoResp(res, "update", "UserTaskResponse", "app/proto/user_task.proto",
-          async () => { const r = await fetch("/api/models/updateUserTask/",{method:"PUT",headers:{"Content-Type":"application/json","Accept":"application/json"},body:JSON.stringify(payload)}); return r.json().catch(()=>null); }
-        );
-        setStatus("update", ok ? "✓ 修改成功" : "修改失败", ok);
-      } catch(err) { setStatus("update", "请求失败: "+err.message, false); $("result-update").textContent = err.message; }
+        const { res, data } = await doFetch("/api/models/updateUserTask/", {
+          method:"PUT", headers, body: JSON.stringify(payload)
+        });
+        showMeta("update", res);
+        $("result-update").textContent = JSON.stringify(data, null, 2);
+        setStatus("update", data?.success ? "✓ 修改成功" : "修改失败", data?.success);
+      } catch(err) { setStatus("update","请求失败: "+err.message,false); $("result-update").textContent=err.message; }
     });
 
+    /* ── 列表 ── */
     $("form-list").addEventListener("submit", async e => {
       e.preventDefault();
-      const fd      = new FormData(e.target);
-      const token   = getToken(fd);
-      const respMode= fd.get("list_resp_mode") || "json";
-      const headers = { "Accept": respMode==="protobuf"?"application/x-protobuf":"application/json" };
+      const fd    = new FormData(e.target);
+      const token = getToken(fd);
+      const headers = {};
       if (token) headers["Authorization"] = "Bearer " + token;
       setStatus("list", "请求中...");
-      resetMeta("list", false);
       $("result-list").textContent = "请求中...";
       try {
-        const res = await fetch("/api/models/dirUserTaskListByUser/", { method:"GET", headers });
-        const ok = await handleProtoResp(res, "list", "UserTaskListResponse", "app/proto/user_task.proto", null);
-        setStatus("list", ok ? "✓ 查询成功" : "查询失败", ok);
-      } catch(err) { setStatus("list", "请求失败: "+err.message, false); $("result-list").textContent = err.message; }
+        const { res, data } = await doFetch("/api/models/dirUserTaskListByUser/", { method:"GET", headers });
+        showMeta("list", res);
+        $("result-list").textContent = JSON.stringify(data, null, 2);
+        setStatus("list", data?.success ? "✓ 查询成功" : "查询失败", data?.success);
+      } catch(err) { setStatus("list","请求失败: "+err.message,false); $("result-list").textContent=err.message; }
     });
+
+    /* ── 轮询 Meshy ── */
+    const WF_LABEL = {
+      pending:             { text:'待开始',     cls:'wf-pending' },
+      cleaned:             { text:'图片已处理', cls:'wf-cleaned' },
+      meshy_pending:       { text:'Meshy 提交中', cls:'wf-meshy' },
+      IN_PROGRESS:         { text:'Meshy 生成中', cls:'wf-meshy',  spin:true },
+      PENDING:             { text:'Meshy 排队中', cls:'wf-meshy',  spin:true },
+      resubmit_pending:    { text:'重试提交中', cls:'wf-meshy',  spin:true },
+      meshy_done:          { text:'Meshy 完成',  cls:'wf-cleaned' },
+      TEXTURE_PROCESSING:  { text:'贴图处理中', cls:'wf-meshy',  spin:true },
+      DONE:                { text:'✅ 全部完成', cls:'wf-done' },
+      FAILED:              { text:'❌ Meshy 失败', cls:'wf-error' },
+      ERROR:               { text:'❌ 本地错误', cls:'wf-error' },
+    };
+    const TERMINAL = new Set(['DONE','FAILED','ERROR']);
+
+    let pollTimer = null;
+    let pollCount = 0;
+
+    function renderWfBadge(status) {
+      const cfg = WF_LABEL[status] || { text: status, cls:'wf-pending' };
+      $("wf-badge-wrap").innerHTML =
+        `<span class="wf-badge ${cfg.cls}">
+           <span class="wf-dot${cfg.spin?' spin':''}"></span>${cfg.text}
+         </span>`;
+      $("wf-status-bar").classList.add("show");
+    }
+
+    async function doPollOnce() {
+      const taskId = $("poll-task-id").value.trim();
+      const token  = $("poll-token").value.trim() || localStorage.getItem("access_token") || "";
+      if (!taskId) { setStatus("poll","请填写 user_task_id", false); return false; }
+
+      const params  = new URLSearchParams({ user_task_id: taskId });
+      const headers = {};
+      if (token) headers["Authorization"] = "Bearer " + token;
+
+      try {
+        const { res, data } = await doFetch("/api/models/queryMeshyTask/?" + params, { method:"GET", headers });
+        pollCount++;
+        $("poll-count").textContent = String(pollCount);
+        $("poll-metaStatus").textContent = String(res.status);
+        $("result-poll").textContent = JSON.stringify(data, null, 2);
+
+        const wfStatus = data?.data?.workflow_status || "";
+        if (wfStatus) renderWfBadge(wfStatus);
+
+        if (TERMINAL.has(wfStatus)) {
+          stopPolling();
+          const ok = wfStatus === "DONE";
+          setStatus("poll", ok ? "✅ 生成完成！" : `终态：${wfStatus}`, ok ? true : false);
+          return false; // 停止
+        }
+
+        setStatus("poll", `轮询中... 第 ${pollCount} 次，状态：${wfStatus || "-"}`, "warn");
+        $("poll-counter").textContent = `已查询 ${pollCount} 次`;
+        return true; // 继续
+      } catch(err) {
+        setStatus("poll","请求失败: "+err.message, false);
+        $("result-poll").textContent = err.message;
+        return false;
+      }
+    }
+
+    function stopPolling() {
+      if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+      $("btn-poll-start").style.display = "inline-flex";
+      $("btn-poll-stop").style.display  = "none";
+      $("btn-poll-once").disabled = false;
+    }
+
+    function startPolling() {
+      if (pollTimer) return;
+      pollCount = 0;
+      $("poll-count").textContent = "0";
+      $("btn-poll-start").style.display = "none";
+      $("btn-poll-stop").style.display  = "inline-block";
+      $("btn-poll-once").disabled = true;
+      setStatus("poll","已启动轮询（每 5 秒）", "warn");
+
+      // 立刻查一次
+      doPollOnce().then(cont => {
+        if (cont) {
+          pollTimer = setInterval(async () => {
+            const cont = await doPollOnce();
+            if (!cont) stopPolling();
+          }, 5000);
+        }
+      });
+    }
+
+    $("form-poll").addEventListener("submit", e => { e.preventDefault(); startPolling(); });
+    $("btn-poll-stop").addEventListener("click", () => { stopPolling(); setStatus("poll","已手动停止"); });
+    $("btn-poll-once").addEventListener("click", doPollOnce);
   </script>
 </body>
 </html>
