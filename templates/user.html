@@ -140,6 +140,9 @@
             <label>确认密码 user_password_confirm
               <span class="field"><input type="password" name="user_password_confirm" required /></span>
             </label>
+            <label>手机验证码 user_phone_code
+              <span class="field"><input type="text" name="user_phone_code" placeholder="请输入验证码（测试填任意非空字符）" required /></span>
+            </label>
             <div class="divider"></div>
             <div class="format-group">
               <span class="format-title">请求格式（Content-Type）</span>
@@ -520,7 +523,8 @@
       const payload  = {
         user_phone_number:     fd.get("user_phone_number"),
         user_password:         fd.get("user_password"),
-        user_password_confirm: fd.get("user_password_confirm")
+        user_password_confirm: fd.get("user_password_confirm"),
+        user_phone_code:       fd.get("user_phone_code")
       };
       setStatus("register", "请求中...");
       resetMeta("register", true);
