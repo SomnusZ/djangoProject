@@ -22,13 +22,14 @@ def success_response(data=None, message="操作成功", status_code=status.HTTP_
     )
 
 
-def error_response(message="操作失败", status_code=status.HTTP_400_BAD_REQUEST):
+def error_response(message="操作失败", status_code=status.HTTP_400_BAD_REQUEST, result="fail"):
     """
     统一失败响应格式。
+    result 可传入自定义标识（如 "registered"），默认为 "fail"。
     """
     return Response(
         {
-            "result": "fail",
+            "result": result,
             "success": False,
             "data": None,
             "message": message,

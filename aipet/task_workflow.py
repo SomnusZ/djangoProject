@@ -16,27 +16,69 @@ from aipet.CleanPic import clean_pic, NoPetDetectedError, ImageProcessError
 from aipet.image_data_url import build_image_data_url
 from aipet.Meshy3D import start_meshy_job, check_meshy_status
 from aipet.Meshy_Workflow import advance_meshy_task, get_texture_result, MeshyContext
+from aipet.Uv_eye_replace import overlay_transparent_png
 
 
-# ── MODEL_DATA_URL 懒加载 ─────────────────────────────────────
+# ── MODEL_DATA_URL 预加载 ─────────────────────────────────────
+# 模块导入时立即将所有模型文件读入内存并 base64 编码，之后调用直接取字典，不再读文件。
+# 前提：部署时所有模型文件必须存在，否则服务启动失败。
+# 路径优先读 settings，未配置则使用默认相对路径。
 
-_MODEL_DATA_URL_CACHE = None
+# 原始单模型懒加载（保留备用）
+# _MODEL_DATA_URL_CACHE = None
+# def _get_model_data_url() -> str:
+#     global _MODEL_DATA_URL_CACHE
+#     if _MODEL_DATA_URL_CACHE:
+#         return _MODEL_DATA_URL_CACHE
+#     model_path = getattr(settings, 'MESHY_MODEL_PATH', '3Dmodels/Sample/model0107.fbx')
+#     try:
+#         with open(model_path, 'rb') as f:
+#             b64 = base64.b64encode(f.read()).decode()
+#         _MODEL_DATA_URL_CACHE = f"data:application/octet-stream;base64,{b64}"
+#         print(f"✅ 模板模型已缓存：{model_path}")
+#         return _MODEL_DATA_URL_CACHE
+#     except Exception as e:
+#         raise ValueError(f'模板模型加载失败：{repr(e)}')
+
+# aipet/ 目录的绝对路径，用于拼接模型文件路径，避免相对路径因启动目录不同而失效
+_AIPET_DIR = Path(__file__).resolve().parent
+
+# 模型键 → 文件路径映射，新增模型只需在此处添加一行
+_MODEL_PATH_MAP = {
+    'Cat_M': getattr(settings, 'MESHY_MODEL_PATH_CAT_M', str(_AIPET_DIR / '3Dmodels' / 'Sample' / 'model0107.fbx')),
+    'Cat_L': getattr(settings, 'MESHY_MODEL_PATH_CAT_L', str(_AIPET_DIR / '3Dmodels' / 'Sample' / 'Cat_L_Final.fbx')),
+    'Cat_XL': getattr(settings, 'MESHY_MODEL_PATH_CAT_XL', str(_AIPET_DIR / '3Dmodels' / 'Sample' / 'Cat_XL_Final.fbx')),
+}
 
 
-def _get_model_data_url() -> str:
-    global _MODEL_DATA_URL_CACHE
-    if _MODEL_DATA_URL_CACHE:
-        return _MODEL_DATA_URL_CACHE
+def _preload_models() -> dict:
+    """模块导入时调用一次，将所有模型文件编码为 data URL 并返回字典。
+    任意一个文件缺失都会抛出 FileNotFoundError，服务将无法启动。
+    部署前请确认 _MODEL_PATH_MAP 中所有路径均存在。
+    """
+    cache = {}
+    for key, path in _MODEL_PATH_MAP.items():
+        try:
+            with open(path, 'rb') as f:
+                b64 = base64.b64encode(f.read()).decode()
+            cache[key] = f"data:application/octet-stream;base64,{b64}"
+            print(f"✅ 模板模型已预加载：{key} → {path}")
+        except FileNotFoundError:
+            raise FileNotFoundError(f'模型文件不存在，服务无法启动：{key} → {path}')
+        except Exception as e:
+            raise RuntimeError(f'模型文件加载失败：{key} → {path}，原因：{repr(e)}')
+    return cache
 
-    model_path = getattr(settings, 'MESHY_MODEL_PATH', '3Dmodels/Sample/model0107.fbx')
-    try:
-        with open(model_path, 'rb') as f:
-            b64 = base64.b64encode(f.read()).decode()
-        _MODEL_DATA_URL_CACHE = f"data:application/octet-stream;base64,{b64}"
-        print(f"✅ 模板模型已缓存：{model_path}")
-        return _MODEL_DATA_URL_CACHE
-    except Exception as e:
-        raise ValueError(f'模板模型加载失败：{repr(e)}')
+
+# 服务启动时执行预加载，结果存入模块级常量供后续直接读取
+_MODEL_DATA_URL_CACHE = _preload_models()
+
+
+def _get_model_data_url(model_key: str = 'Cat_M') -> str:
+    # 预加载后直接从字典取，键不存在则说明模型未注册
+    if model_key in _MODEL_DATA_URL_CACHE:
+        return _MODEL_DATA_URL_CACHE[model_key]
+    raise ValueError(f'未知模型键：{model_key}，可选值：{list(_MODEL_DATA_URL_CACHE.keys())}')
 
 
 # ── 内部辅助：ORM 对象 <-> dict 互转 ─────────────────────────
@@ -106,7 +148,7 @@ def preprocess_image(task_id: str, file_bytes: bytes) -> tuple:
 
 # ── 提交 Meshy 任务 ───────────────────────────────────────────
 
-def meshy(task_obj):
+def meshy(task_obj, cat_size: str = 'Cat_M'):
     """
     提交 Meshy retexture 任务，将结果写入 task_obj 字段。
     不调用 save()，由 view 层统一持久化。
@@ -125,7 +167,7 @@ def meshy(task_obj):
         return False, {'detail': '预处理图片文件不存在', 'code': 'image_missing'}
 
     try:
-        model_data_url = _get_model_data_url()
+        model_data_url = _get_model_data_url(cat_size)
     except ValueError as e:
         return False, {'detail': str(e), 'code': 'config_error'}
 
@@ -197,12 +239,24 @@ def meshy_status(task_obj):
     _sync_dict_to_obj(task_dict, task_obj)
 
     if task_obj.workflow_status == 'DONE':
+        texture_replace_eye = ''
+        # 覆盖眼睛
+        if task_obj.pet_model_id in [2, 3]:
+            cat_size = 'Cat_L'
+            if task_obj.pet_model_id == 2:
+                cat_size = 'Cat_L'
+            elif task_obj.pet_model_id == 3:
+                cat_size = 'Cat_XL'
+            texture_replace_eye = overlay_transparent_png(
+                str(_AIPET_DIR / '3Dmodels' / 'meshy' / task_obj.user_task_id / 'texture_0_base_color.png'), task_id, cat_size)
+
         final = get_texture_result(task_id, task_dict)
         return True, {
             'task_id':              task_id,
             'workflow_status':      'DONE',
             'texture_download_url': final.get('texture_download_url'),
             'texture_clean_path':   task_obj.texture_clean_path,
+            'texture_replace_eye_path':   texture_replace_eye,
         }
 
     return True, {

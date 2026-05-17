@@ -59,9 +59,10 @@ class CreateUserSerializer(serializers.ModelSerializer):
         }
 
     def validate_user_password(self, value):
-        # 简单密码长度校验
-        if len(value) < 6:
-            raise serializers.ValidationError('密码长度不能小于6位')
+        if not (6 <= len(value) <= 15):
+            raise serializers.ValidationError('密码长度须在6到15位之间')
+        if not re.match(r'^[A-Za-z0-9]+$', value):
+            raise serializers.ValidationError('密码只能包含大小写字母和数字')
         return value
 
     def validate_user_phone_number(self, value):

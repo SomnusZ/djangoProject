@@ -32,6 +32,26 @@ class AppUserJWTAuthentication(JWTAuthentication):
             raise AuthenticationFailed('用户不存在', code='user_not_found')
 
 
+def get_user_from_request(request) -> Optional[User]:
+    """
+    临时兼容逻辑：优先从 JWT token 取用户，取不到则从请求参数中的
+    user_phone_number 查询用户表。
+    前端接入 token 后可直接移除手机号分支，恢复原有 request.user 用法。
+    """
+    # JWT 路径（正常逻辑，保持不变）
+    if request.user and getattr(request.user, 'is_authenticated', False):
+        return request.user
+
+    # 临时兼容：从请求体或 query 参数取手机号
+    phone = (
+        request.data.get('user_phone_number', '')
+        or request.query_params.get('user_phone_number', '')
+    )
+    if not phone:
+        return None
+    return User.objects.filter(user_phone_number=str(phone).strip()).first()
+
+
 def get_owner_user(obj) -> Optional[User]:
     """
     获取对象所属用户。

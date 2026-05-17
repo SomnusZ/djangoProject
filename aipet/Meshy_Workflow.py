@@ -1,6 +1,7 @@
 from aipet.Meshy3D import download_meshy_result, start_meshy_job
 from aipet.UVretexture import clean_uv_inpaint_by_task_id
 from dataclasses import dataclass
+from django.conf import settings
 
 #服务器BASE
 PUBLIC_BASE_URL="http://43.138.73.163"
@@ -170,7 +171,9 @@ def get_texture_result(task_id: str, task: dict):
 
     if status == "DONE":
         # request 参数已移除，直接返回相对路径，由调用方决定是否拼绝对 URL
-        download_url = f"/meshy_images/{task_id}/texture_clean.png"
+        # download_url = f"/meshy_images/{task_id}/texture_clean.png"
+        site_url = getattr(settings, 'SITE_URL', '').rstrip('/')
+        download_url = f"{site_url}/meshy_images/{task_id}/texture_clean.png"
         return {
             "texture_download_url": download_url
         }

@@ -21,9 +21,19 @@
 ```
 djangoProject/
 ├── aipet_backend/              # 项目主配置（settings、urls、wsgi）
+├── aipet/                      # AI 宠物模型生成工作流（纯业务逻辑层）
+│   ├── task_workflow.py        # 工作流统一入口（被 user_task/views.py 调用）
+│   ├── CleanPic.py             # YOLO 宠物检测 + rembg 背景去除
+│   ├── Meshy3D.py              # Meshy.ai API 封装（提交/查询）
+│   ├── Meshy_Workflow.py       # Meshy 工作流状态机
+│   ├── UVretexture.py          # UV 贴图后处理
+│   ├── image_data_url.py       # 图片 → base64 data URL 工具
+│   └── 3Dmodels/
+│       ├── Sample/             # 参考 3D 模型（model0107.fbx）
+│       └── meshy/              # Meshy 生成结果下载目录（按 task_id 分子目录）
 ├── app/
 │   ├── user/                   # 用户模块
-│   ├── user_task/              # 用户任务模块
+│   ├── user_task/              # 用户任务模块（含 AI 生成流程调用）
 │   ├── pet_action/             # 动作模块
 │   ├── pet_model/              # 宠物模型模块
 │   ├── user_task_action_relation/  # 任务-动作关系模块
@@ -45,6 +55,7 @@ djangoProject/
 ├── templates/                  # 前端测试页面（HTML）
 │   ├── index.html              # 接口测试中心导航页
 │   ├── user.html               # 用户模块测试页
+│   ├── user_task.html          # 用户任务 + AI 工作流测试页
 │   ├── wealth.html             # 货币资产模块测试页
 │   ├── playtask.html           # 玩法任务模块测试页
 │   ├── achievement.html        # 成就模块测试页
@@ -60,7 +71,7 @@ djangoProject/
 | 表名 | 主键 | 核心字段 | 说明 |
 |---|---|---|---|
 | user | user_id | user_name, user_phone_number, user_password, user_profile_picture, user_mail_address, **user_status** | 用户基础信息表；密码哈希存储；user_status 为整型状态值（字典项配置） |
-| user_task | user_task_id | user_id(FK), task_name | 用户任务表；同一用户下 task_name 不可重复 |
+| user_task | user_task_id (UUID) | user_id(FK), task_name, created_at, workflow_status, image_path, pet_breed, pet_type, meshy_job_id, meshy_retry_count, texture_clean_path, workflow_error, pet_model_id | 用户任务表；同一用户下 task_name 不可重复；主键为 UUID 字符串（非自增整数） |
 | pet_action | pet_action_id | pet_action_name | 动作字典表 |
 | pet_model | pet_model_id | pet_model_name | 宠物模型字典表 |
 | user_task_action_relation | relation_id | user_task_id(FK), pet_action_id(FK) | 任务-动作关系表（同一任务同一动作唯一） |
@@ -75,15 +86,53 @@ djangoProject/
 | property | property_id | property_name | 道具字典表 |
 | user_property_relation | id | user_id(FK), property_id(FK) | 用户-道具关系表 |
 
+### user_task 字段详情
+
+> 主键已由 `AutoField(int)` 改为 `CharField(UUID, max_length=36)`，与 AI 生成流程的文件命名保持一致。
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| user_task_id | VARCHAR(36) PK | UUID 字符串主键（由业务层在写库前预生成） |
+| user_id | INT FK | 所属用户（→ user.user_id） |
+| task_name | VARCHAR(200) | 任务名称，同一用户下唯一 |
+| created_at | DATETIME | 创建时间（auto_now_add，用于列表按时间倒序） |
+| workflow_status | VARCHAR(32) | AI 工作流当前状态（见下方枚举） |
+| image_path | VARCHAR(512) | CleanPic 处理后图片的本地相对路径 |
+| pet_breed | VARCHAR(100) | YOLO 识别到的宠物品种（如 British Shorthair） |
+| pet_type | VARCHAR(20) | YOLO 识别到的宠物类型（cat / dog） |
+| meshy_job_id | VARCHAR(200) | Meshy.ai 任务 ID |
+| meshy_retry_count | INT DEFAULT 0 | Meshy 已重试次数（上限 2 次） |
+| texture_clean_path | VARCHAR(512) | UV 贴图清理后的本地路径 |
+| workflow_error | TEXT | 错误信息（空字符串 = 无错误） |
+| pet_model_id | INT DEFAULT 0 | 关联的宠物模型ID（0 = 未生成，生成完成后由业务层写入） |
+
+**唯一约束：** `(user_id, task_name)`
+
+**workflow_status 枚举：**
+
+| 值 | 含义 |
+|---|---|
+| `cleaned` | 图片预处理完成（任务创建时的初始状态） |
+| `meshy_pending` | Meshy 任务已提交，等待队列 |
+| `IN_PROGRESS` | Meshy 生成中 |
+| `resubmit_pending` | Meshy 失败后重新提交中 |
+| `meshy_done` | Meshy 生成完成，开始下载/处理贴图 |
+| `TEXTURE_PROCESSING` | UV 贴图清理中 |
+| `DONE` | 全部完成 ✅ |
+| `FAILED` | Meshy 失败，已超重试上限 ❌ |
+| `ERROR` | 本地处理错误（见 workflow_error）❌ |
+
+---
+
 ## 用户状态字段说明（user_status）
 
 `user_status` 为 `INT` 类型，默认值 `0`，后续通过字典项配置每个值的含义，当前约定：
 
-| 值 | 含义（暂定） |
+| 值 | 含义 |
 |---|---|
-| 0 | 正常 |
-| 1 | 禁用 |
-| 2 | 注销 |
+| 0 | 新玩家，服务器不存在贴图 |
+| 1 | 已上传照片，贴图未制作完 |
+| 2 | 已上传照片，服务器存在贴图 |
 
 ## 关联逻辑
 
@@ -106,6 +155,20 @@ PetModel: 独立字典表（当前不与 User / UserTask 直接关联）
 
 - 默认所有接口需要登录，请求头携带：`Authorization: Bearer <access_token>`
 - 例外：注册（`createUser`）、登录（`dirUser` POST）允许匿名访问
+
+> ⚠️ **临时兼容模式（前端未接入 token 期间有效）**
+>
+> `user` 和 `user_task` 两个模块的需登录接口，当前已临时放开权限（`AllowAny`），支持前端通过请求体或 query 参数传入 `user_phone_number` 代替 token 完成身份识别。
+>
+> - **POST/PUT 请求**：在请求体 JSON 中加 `"user_phone_number": "13800000000"`
+> - **GET 请求**：在 URL 参数中加 `?user_phone_number=13800000000`
+>
+> 实现位置：`app/permissions.py` → `get_user_from_request(request)`，优先读 JWT token，取不到则查手机号。原有 token 校验代码均以注释形式保留，前端接入 token 后按注释提示还原即可。
+>
+> **涉及文件：**
+> - `app/permissions.py`：新增 `get_user_from_request`
+> - `app/user/views.py`：`update_user`、`dir_user GET` 改为 `AllowAny` + 手机号兜底
+> - `app/user_task/views.py`：整个 ViewSet 改为 `AllowAny`，覆写 `get_queryset()`，所有 `request.user` 替换为 `request_user`
 
 ### 统一响应格式
 
@@ -233,7 +296,8 @@ PetModel: 独立字典表（当前不与 User / UserTask 直接关联）
       "user_profile_picture": null,
       "user_phone_number": "13800000000",
       "user_mail_address": null,
-      "user_status": 0
+      "user_status": 0,
+      "pet_model_id": 0
     },
     "token": {
       "access_token": "<access_token>",
@@ -285,7 +349,8 @@ GET /api/users/dirUser/?user_id=1
     "user_profile_picture": null,
     "user_phone_number": "13800000000",
     "user_mail_address": null,
-    "user_status": 0
+    "user_status": 0,
+    "pet_model_id": 0
   },
   "message": "查询成功"
 }
@@ -330,6 +395,43 @@ GET /api/users/dirUser/?user_id=1
   "message": "修改成功"
 }
 ```
+
+---
+
+### 1.5 查询用户状态
+
+- **接口**：`GET /api/users/dirUserStatus/`
+- **认证**：否（临时兼容：通过 query 参数 `user_phone_number` 识别用户）
+- **说明**：仅返回 `user_status`，供前端判断玩家当前状态
+
+**Query 参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| user_phone_number | string | 是（无 token 时） | 手机号，临时兼容用 |
+
+**请求示例：**
+```
+GET /api/users/dirUserStatus/?user_phone_number=13800000000
+```
+
+**成功响应：**
+```json
+{
+  "result": "success",
+  "success": true,
+  "data": { "user_status": 0 },
+  "message": "查询成功"
+}
+```
+
+**user_status 含义：**
+
+| 值 | 含义 |
+|---|---|
+| 0 | 新玩家，服务器不存在贴图 |
+| 1 | 已上传照片，贴图未制作完 |
+| 2 | 已上传照片，服务器存在贴图 |
 
 ---
 
@@ -421,45 +523,146 @@ GET /api/users/dirUser/?user_id=1
 
 ## 4. 用户任务模块（/api/models/）
 
-### 4.1 创建任务
+> 所有接口均需登录，数据自动隔离（只能操作当前登录用户的任务）。  
+> `user_task_id` 为 **UUID 字符串**，非整数。
+
+### 4.1 创建任务并启动 AI 生成流程
 
 - **接口**：`POST /api/models/createUserTask/`
 - **认证**：是
-- **说明**：`user_id` 从 Token 自动读取，无需传参
+- **Content-Type**：`multipart/form-data`（文件上传，非 JSON）
+
+**表单字段：**
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| task_name | string | 是 | 任务名称，同一用户下不可重复 |
+| image | file | 是 | 宠物图片，≤5MB，仅支持图片格式 |
+| CatSizeID | int | 否 | 模型尺寸：`10`=Cat_M、`20`=Cat_L、`30`=Cat_XL，默认 `10` |
 
-**成功响应：**
+**完整执行流程（同步）：**
+1. 取注册时预创建的 `UserTask` 记录
+2. 调用 `CleanPic`：YOLO 检测宠物 → rembg 去背景 → 保存清图
+3. 预处理失败 → 直接返回错误，**不写库**（用户可重新上传）
+4. 预处理成功 → 更新 `UserTask` 记录（`workflow_status=cleaned`），用户状态更新为 `1`
+5. 根据 `CatSizeID` 选择对应 fbx 模型，调用 Meshy.ai 提交 retexture 任务
+6. 同步写入 `pet_model_id`（10→1、20→2、30→3），保存状态并返回响应
+
+**副作用：** 任务创建成功后，当前用户的 `user_status` 自动更新为 `1`（已上传图片、待收到贴图）；`pet_model_id` 根据 `CatSizeID` 同步写入。
+
+**成功响应 201：**
 ```json
 {
   "result": "success",
   "success": true,
-  "data": { "user_task_id": 1, "user_id": 1, "task_name": "我的任务" },
-  "message": "创建成功"
+  "message": "任务创建成功",
+  "data": {
+    "task_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "task_name": "mao",
+    "workflow_status": "meshy_pending",
+    "meshy_job_id": "meshy-job-id-string",
+    "pet_breed": "British Shorthair",
+    "pet_type": "cat"
+  }
 }
 ```
 
-### 4.2 修改任务
+**错误响应：**
+
+| result 值 | 触发场景 |
+|---|---|
+| `imgNone` | 未上传图片 |
+| `imgOnly` | 非图片格式 |
+| `tooLarge` | 图片超过 5MB |
+| `taskNone` | 用户暂无预创建任务（需联系管理员） |
+| `undetected` | YOLO 未检测到宠物 |
+| `fail` | 图片处理失败 / Meshy 提交失败 |
+
+---
+
+### 4.2 轮询 Meshy 任务状态
+
+- **接口**：`GET /api/models/queryMeshyTask/`
+- **认证**：是
+- **说明**：每次调用都向 Meshy.ai 查询最新状态并推进工作流；建议前端每 5 秒轮询一次，遇到终态（`DONE` / `FAILED` / `ERROR`）后停止
+
+**Query 参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| user_task_id | string (UUID) | 是 | 任务ID |
+
+**进行中响应：**
+```json
+{
+  "result": "success",
+  "data": {
+    "task_id": "uuid",
+    "workflow_status": "IN_PROGRESS",
+    "workflow_error": ""
+  }
+}
+```
+
+**完成响应（workflow_status=DONE）：**
+```json
+{
+  "result": "success",
+  "data": {
+    "task_id": "uuid",
+    "workflow_status": "DONE",
+    "texture_download_url": "https://cdn.meshy.ai/...",
+    "texture_clean_path": "3Dmodels/meshy/<uuid>/texture_clean.png"
+  }
+}
+```
+
+**副作用：** 当 `workflow_status` 变为 `DONE` 时，当前用户的 `user_status` 自动更新为 `2`（已完成完整 AI 生成流程）。
+
+---
+
+### 4.3 修改任务名
 
 - **接口**：`PUT /api/models/updateUserTask/`
 - **认证**：是
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| user_task_id | int | 是 | 任务ID |
-| task_name | string | 是 | 新任务名 |
+| user_task_id | string (UUID) | 是 | 任务ID |
+| task_name | string | 是 | 新任务名（同用户下不可重复） |
 
-### 4.3 查询单个任务
+**请求示例：**
+```json
+{
+  "user_task_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "task_name": "新名称"
+}
+```
 
-- **接口**：`GET /api/models/dirUserTask/?user_task_id=1`
+---
+
+### 4.4 查询单个任务
+
+- **接口**：`GET /api/models/dirUserTask/`
 - **认证**：是
 
-### 4.4 查询当前用户任务列表
+**Query 参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| user_task_id | string (UUID) | 是 | 任务ID |
+
+**请求示例：**
+```
+GET /api/models/dirUserTask/?user_task_id=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+```
+
+---
+
+### 4.5 查询当前用户任务列表
 
 - **接口**：`GET /api/models/dirUserTaskListByUser/`
 - **认证**：是
+- **说明**：按 `created_at` 倒序返回，无需额外参数
 
 **成功响应：**
 ```json
@@ -467,10 +670,73 @@ GET /api/users/dirUser/?user_id=1
   "result": "success",
   "success": true,
   "data": [
-    { "user_task_id": 2, "user_id": 1, "task_name": "任务B" },
-    { "user_task_id": 1, "user_id": 1, "task_name": "任务A" }
+    { "user_task_id": "uuid-B", "user_id": 1, "task_name": "任务B" },
+    { "user_task_id": "uuid-A", "user_id": 1, "task_name": "任务A" }
   ],
   "message": "查询成功"
+}
+```
+
+---
+
+### 4.6 查询任务的 pet_model_id
+
+- **接口**：`GET /api/models/dirPetModelId/`
+- **认证**：是
+
+**Query 参数：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| user_task_id | string (UUID) | 是 | 任务ID |
+
+**成功响应：**
+```json
+{
+  "result": "success",
+  "success": true,
+  "message": "查询成功",
+  "data": {
+    "user_task_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "pet_model_id": 0
+  }
+}
+```
+
+> `pet_model_id` 为 `0` 表示尚未关联模型。
+
+---
+
+### 4.7 更新任务的 pet_model_id
+
+- **接口**：`PUT /api/models/updatePetModelId/`
+- **认证**：是
+
+**请求体（JSON）：**
+
+| 参数 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| user_task_id | string (UUID) | 是 | 任务ID |
+| pet_model_id | int | 是 | 要关联的宠物模型ID |
+
+**请求示例：**
+```json
+{
+  "user_task_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+  "pet_model_id": 3
+}
+```
+
+**成功响应：**
+```json
+{
+  "result": "success",
+  "success": true,
+  "message": "更新成功",
+  "data": {
+    "user_task_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    "pet_model_id": 3
+  }
 }
 ```
 
@@ -485,7 +751,7 @@ GET /api/users/dirUser/?user_id=1
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| user_task_id | int | 是 | 任务ID |
+| user_task_id | string (UUID) | 是 | 任务ID |
 | pet_action_id | int | 是 | 动作ID |
 
 ### 5.2 解绑动作与任务
@@ -495,12 +761,12 @@ GET /api/users/dirUser/?user_id=1
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| user_task_id | int | 是 | 任务ID |
+| user_task_id | string (UUID) | 是 | 任务ID |
 | pet_action_id | int | 是 | 动作ID |
 
 ### 5.3 查询任务的动作列表
 
-- **接口**：`GET /api/task-actions/dirActionListByTask/?user_task_id=1`
+- **接口**：`GET /api/task-actions/dirActionListByTask/?user_task_id=<uuid>`
 - **认证**：是
 
 **成功响应：**
@@ -922,11 +1188,81 @@ GET /api/users/dirUser/?user_id=1
 |---|---|
 | 测试中心导航 | `/test/index/` |
 | 用户模块 | `/test/user/` |
+| 用户任务 + AI 工作流 | `/test/user_task/` |
 | 货币资产模块 | `/test/wealth/` |
 | 玩法任务模块 | `/test/playtask/` |
 | 成就模块 | `/test/achievement/` |
 | 家具模块 | `/test/furniture/` |
 | 道具模块 | `/test/property/` |
+
+---
+
+## 变更记录
+
+### 2026-04-30
+
+**`app/utils.py`**
+- `error_response` 新增 `result` 参数（默认 `"fail"`），支持自定义返回标识，向后兼容所有现有调用
+
+**`app/user/serializers.py`**
+- 密码校验规则：从"≥6位"改为"6~15位、仅限大小写字母和数字（无特殊字符）"
+
+**`app/user/views.py`**
+- 注册接口：提前判断手机号已存在，返回 `result="registered"`
+- 登录接口：用户不存在返回 `result="unexist"`，密码错误返回 `result="fail"`
+- `update_user`、`dir_user GET`：临时改为 `AllowAny`，通过 `get_user_from_request` 解析用户（原代码注释保留）
+
+**`app/permissions.py`**
+- 新增 `get_user_from_request(request)`：优先 JWT token，其次手机号查表（临时兼容）
+
+**`app/user_task/views.py`**
+- `queryMeshyTask`、`dirPetModelId`、`updatePetModelId`：移除 `user_task_id` 入参，改为通过 token/手机号关联查当前用户名下唯一任务
+- `queryMeshyTask`：返回值中新增 `user_status` 字段
+- 整个 ViewSet 权限临时改为 `AllowAny`，覆写 `get_queryset()` 通过 `get_user_from_request` 过滤（原代码注释保留）
+- `createUserTask`：所有 `request.user` 替换为 `request_user`（原代码注释保留）
+- 各错误场景补充自定义 `result` 标识：`imgnone`、`imgonly`、`toolarge`、`tasknameexist`、`undetected`、`tasknone`
+
+---
+
+### 2026-04-30（续）
+
+**`app/user/views.py`**
+- `createUser` 注册成功后同步创建一条空的 `UserTask`（`task_id=uuid4()`，`task_name="mao"`），用户名下任务在注册时即预创建
+- 新增接口 `dirUserStatus`（`GET /api/users/dirUserStatus/`）：仅返回 `user_status`，临时兼容通过 `user_phone_number` query 参数识别用户
+
+**`app/user_task/views.py`**
+- `createUserTask` 重构：不再新建 UserTask，改为取注册时预创建的 task，将图片处理结果写入已有记录（`task_obj.save(update_fields=[...])`）；`task_name`、`task_id` 不再由前端传入或重新生成（原代码注释保留）
+- 新增接口 `dirTaskResult`（`GET /api/models/dirTaskResult/`）：查询 `workflow_status=DONE` 的任务，将本地 `texture_clean_path` 转换为可访问的 `texture_download_url` 返回
+
+**`aipet_backend/settings.py`**
+- 新增 `MESHY_SERVER_URL`：服务器外网地址，用于拼接贴图下载 URL（本地开发用 `http://127.0.0.1:8000`，生产用 `http://42.193.98.94`）
+- 新增 `SITE_URL`：同上，本地/生产注释切换
+
+**nginx 配置说明**
+- `location /meshy_images/` → `alias /www/wwwroot/djangoProject/aipet/3Dmodels/meshy/`
+- `texture_clean_path`（DB 本地路径）→ `texture_download_url` 转换规则：截取 `meshy/` 之后的部分，拼接 `MESHY_SERVER_URL/meshy_images/`
+
+---
+
+### 新增接口汇总（2026-04-30）
+
+| 接口 | 路径 | 说明 |
+|---|---|---|
+| 查询玩家状态 | `GET /api/users/dirUserStatus/?user_phone_number=xxx` | 仅返回 `user_status` |
+| 查询贴图结果 | `GET /api/models/dirTaskResult/?user_phone_number=xxx` | 返回 DONE 任务的 `texture_download_url` |
+
+---
+
+### 2026-05-01
+
+**`app/user/views.py`**
+- `dirUser GET`（查询用户信息）：返回数据新增 `pet_model_id` 字段，取该用户名下 `UserTask` 的 `pet_model_id`，无 task 则返回 `0`
+- `dirUser POST`（登录）：`user` 对象同步新增 `pet_model_id` 字段，逻辑同上
+
+**`app/user_task/views.py`**
+- `createUserTask`：新增表单字段 `CatSizeID`（可选，默认 `10`），映射关系 `10→Cat_M`、`20→Cat_L`、`30→Cat_XL`；提交 Meshy 后同步将 `pet_model_id`（`10→1`、`20→2`、`30→3`）写入 `UserTask`
+
+---
 
 ## 开发命令速查
 

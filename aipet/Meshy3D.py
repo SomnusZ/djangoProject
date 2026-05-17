@@ -27,16 +27,33 @@ def start_meshy_job(image_url: str,model_url:str) -> dict:
         "enable_pbr":False,
         "enable_original_uv":True
     }
+    # headers = {"Authorization": f"Bearer {MESHY_API_KEY}"}
+    # resp = requests.post(f"{MESHY_API_BASE}/retexture", headers=headers, json=payload)
+    # resp.raise_for_status()
+    # data = resp.json()
+    #
+    # if "result" not in data:
+    #     print("❌ Meshy 返回异常:", data)
+    #     raise ValueError(f"Meshy response missing result: {data}")
+    #
+    # return {"job_id": data["result"]}
+    # 弱网保护，请求三次
     headers = {"Authorization": f"Bearer {MESHY_API_KEY}"}
-    resp = requests.post(f"{MESHY_API_BASE}/retexture", headers=headers, json=payload)
-    resp.raise_for_status()
-    data = resp.json()
+    data = ''
+    for i in range(3):
+        try:
+            resp = requests.post(f"{MESHY_API_BASE}/retexture", headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+            if "result" in data:
+                return {"job_id": data["result"]}
+        except Exception as e:
+            data = str(e)
+        time.sleep(2)
 
-    if "result" not in data:
-        print("❌ Meshy 返回异常:", data)
-        raise ValueError(f"Meshy response missing result: {data}")
+    print("❌ Meshy 返回异常:", data)
+    raise ValueError(f"Meshy response missing result: {data}")
 
-    return {"job_id": data["result"]}
 
 #根据id轮询找model_url
 def check_meshy_status(meshy_task_id: str) -> dict:

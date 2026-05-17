@@ -14,9 +14,11 @@ SECRET_KEY = 'django-insecure-rx7-02sh1tidvpq4k&@@2a#06+69o^15ze8b%me^ycnw%y+c9g
 
 # 调试模式（生产环境必须关闭）
 DEBUG = True
+# DEBUG = False
 
 # 允许访问的主机
 ALLOWED_HOSTS = []
+# ALLOWED_HOSTS = ['42.193.98.94', 'localhost', '127.0.0.1']
 
 # 应用配置
 INSTALLED_APPS = [
@@ -106,6 +108,16 @@ DATABASES = {
         'PORT': '3306',
     }
 }
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'NAME': 'aipetdb',
+#         'USER': 'root',
+#         'PASSWORD': 'NewPassword123!',
+#         'HOST': '127.0.0.1',
+#         'PORT': '3306',
+#     }
+# }
 
 # 密码验证
 AUTH_PASSWORD_VALIDATORS = [
@@ -127,6 +139,8 @@ STATIC_URL = 'static/'
 # 媒体文件（上传头像）
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+SITE_URL = 'http://127.0.0.1:8000'  # 本地开发
+# SITE_URL = 'http://42.193.98.94'  # 生产服务器
 
 # 默认主键类型
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -134,6 +148,11 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Meshy 基础宠物模型路径（相对项目根目录）
 # 首次调用 submitMeshyTask 时懒加载，base64 编码后缓存在内存中
 MESHY_MODEL_PATH = str(BASE_DIR / 'aipet' / '3Dmodels' / 'Sample' / 'model0107.fbx')
+
+# 服务器外网地址，用于拼接贴图下载 URL
+# nginx 配置：location /meshy_images/ -> /www/wwwroot/djangoProject/aipet/3Dmodels/meshy/
+MESHY_SERVER_URL = 'http://127.0.0.1:8000'  # 本地开发
+# MESHY_SERVER_URL = 'http://42.193.98.94'  # 生产服务器
 
 # DRF 配置
 REST_FRAMEWORK = {

@@ -3,6 +3,8 @@
 包含用户相关接口：dirUser、updateUser、createUser。
 """
 
+import uuid
+
 from django.contrib.auth.hashers import check_password
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -18,7 +20,8 @@ from .serializers import (
     DirUserQuerySerializer,
 )
 from app.utils import success_response, error_response
-from app.permissions import get_owned_object_or_403
+from app.permissions import get_owned_object_or_403, get_user_from_request
+from app.user_task.models import UserTask
 
 
 class UserViewSet(viewsets.GenericViewSet):
@@ -40,6 +43,9 @@ class UserViewSet(viewsets.GenericViewSet):
         if self.action == 'create_user':
             return [AllowAny()]
         if self.action == 'dir_user' and self.request.method == 'POST':
+            return [AllowAny()]
+        # 临时兼容：前端未接入 token 时，通过手机号传参，放行所有请求由视图层做用户解析
+        if self.action in ('dir_user', 'update_user', 'dir_user_status'):
             return [AllowAny()]
         # 读取 @action 上声明的 permission_classes（如 IsAdminUser）
         action_method = getattr(self, self.action, None)
@@ -63,10 +69,23 @@ class UserViewSet(viewsets.GenericViewSet):
             "user_phone_code": "1234"
         }
         """
+        # 手机号已注册单独判断，返回特定 result 标识
+        phone = request.data.get('user_phone_number', '').strip()
+        if phone and User.objects.filter(user_phone_number=phone).exists():
+            return error_response('手机号已注册', status_code=status.HTTP_200_OK, result='registered')
+
         serializer = CreateUserSerializer(data=request.data)
         if not serializer.is_valid():
             return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
         user = serializer.save()
+
+        # 注册成功后同步创建一条空的 UserTask，task_id 预生成，task_name 固定为 "mao"
+        UserTask.objects.create(
+            user_task_id=str(uuid.uuid4()),
+            user=user,
+            task_name='mao',
+        )
+
         return success_response(UserSerializer(user).data, message='注册成功', status_code=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['put', 'patch'], url_path='updateUser')
@@ -79,7 +98,11 @@ class UserViewSet(viewsets.GenericViewSet):
             "user_name": "Jerry"
         }
         """
-        user = request.user
+        # user = request.user  # 原逻辑：从 token 取用户
+        # 临时兼容：优先 token，取不到则从请求体 user_phone_number 查询
+        user = get_user_from_request(request)
+        if user is None:
+            return error_response('用户不存在或未提供身份信息', status_code=status.HTTP_200_OK, result='unexit')
 
         # 移除仅用于定位的字段，避免序列化器报错
         update_data = request.data.copy()
@@ -114,11 +137,11 @@ class UserViewSet(viewsets.GenericViewSet):
 
             user = User.objects.filter(user_phone_number=user_phone_number).first()
             if not user:
-                return error_response('用户不存在', status_code=status.HTTP_404_NOT_FOUND)
+                return error_response('用户不存在', status_code=status.HTTP_200_OK, result='unexist')
 
             if login_type == 'password':
                 if not check_password(user_password, user.user_password):
-                    return error_response('密码错误', status_code=status.HTTP_400_BAD_REQUEST)
+                    return error_response('密码错误', status_code=status.HTTP_200_OK, result='wrongPassword')
             elif login_type == 'code':
                 # 手机验证码登录占位（暂不做真实校验）
                 if not user_phone_code:
@@ -131,15 +154,24 @@ class UserViewSet(viewsets.GenericViewSet):
                 'refresh_token': str(refresh),
             }
 
-            # 返回用户信息 + Token
+            # 返回用户信息 + Token，附带 pet_model_id 供前端判断 3D 模型是否生成完成
+            task = UserTask.objects.filter(user=user).first()
+            user_data = UserSerializer(user).data
+            user_data['pet_model_id'] = task.pet_model_id if task else 0
             data = {
-                'user': UserSerializer(user).data,
+                'user': user_data,
                 'token': token_data,
             }
 
             return success_response(data, message='登录成功')
 
-        # GET：查询用户信息（需登录）
+        # GET：查询用户信息
+        # 临时兼容：优先 token，取不到则从 query 参数 user_phone_number 查询
+        # request_user = request.user  # 原逻辑：从 token 取当前用户，再做归属校验
+        request_user = get_user_from_request(request)
+        if request_user is None:
+            return error_response('用户不存在或未提供身份信息', status_code=status.HTTP_200_OK, result='unexit')
+
         serializer = DirUserQuerySerializer(data=request.query_params)
         if not serializer.is_valid():
             return error_response(serializer.errors, status_code=status.HTTP_400_BAD_REQUEST)
@@ -152,16 +184,39 @@ class UserViewSet(viewsets.GenericViewSet):
         if user_phone_number:
             filters['user_phone_number'] = user_phone_number
 
-        user, denied = get_owned_object_or_403(
-            request,
-            User.objects.all(),
-            not_found_msg='用户不存在',
-            **filters,
-        )
-        if denied:
-            return denied
+        # user, denied = get_owned_object_or_403(  # 原逻辑：归属校验基于 request.user
+        #     request,
+        #     User.objects.all(),
+        #     not_found_msg='用户不存在',
+        #     **filters,
+        # )
+        # if denied:
+        #     return denied
+        # 临时兼容：用解析出的 request_user 做归属校验
+        user = User.objects.filter(**filters).first()
+        if user is None:
+            return error_response('用户不存在', status_code=status.HTTP_200_OK, result='unexit')
+        if user.user_id != request_user.user_id:
+            return error_response('无权限', status_code=status.HTTP_403_FORBIDDEN)
 
-        return success_response(UserSerializer(user).data, message='查询成功')
+        # 取该用户预创建的任务记录，附带 pet_model_id 供前端判断 3D 模型是否生成完成
+        task = UserTask.objects.filter(user=user).first()
+        data = UserSerializer(user).data
+        data['pet_model_id'] = task.pet_model_id if task else 0
+        return success_response(data, message='查询成功')
+
+    @action(detail=False, methods=['get'], url_path='dirUserStatus')
+    def dir_user_status(self, request):
+        """
+        查询当前用户状态接口，仅返回 user_status。
+        GET /api/users/dirUserStatus/
+        临时兼容：优先 token，取不到则从 query 参数 user_phone_number 查询。
+        """
+        user = get_user_from_request(request)
+        if user is None:
+            return error_response('用户不存在或未提供身份信息', status_code=status.HTTP_200_OK, result='unexit')
+
+        return success_response({'user_status': user.user_status}, message='查询成功')
 
 
 # 测试页面已改为TemplateView
