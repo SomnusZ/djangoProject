@@ -5,6 +5,7 @@ AI 宠物工作流接口：createUserTask（含图片预处理+Meshy提交）、
 """
 
 import uuid
+from pathlib import Path
 
 from django.conf import settings
 from rest_framework import status, viewsets
@@ -25,6 +26,7 @@ from .serializers import (
 from aipet.task_workflow import preprocess_image
 from aipet.task_workflow import meshy as workflow_meshy
 from aipet.task_workflow import meshy_status as workflow_meshy_status
+from aipet.photo_to_uv_texture import generate_eye_uv_texture
 
 # 工作流涉及的所有数据库字段，view 层统一用这个列表做 update_fields
 _WORKFLOW_FIELDS = [
@@ -325,3 +327,38 @@ class UserTaskViewSet(OwnedQuerySetMixin, OwnedObjectMixin, viewsets.GenericView
             },
             message='查询成功',
         )
+
+    @action(detail=False, methods=['post'], url_path='generateEyeUvTexture',
+            parser_classes=[MultiPartParser])
+    def generate_eye_uv_texture_view(self, request):
+        """
+        测试接口：前端上传猫咪图片，生成眼球 UV 贴图。
+        图片保存至 aipet/photo_to_uv_texture/UserImage/，结果直接返回给前端。
+        """
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return error_response('请上传 image 文件', status_code=status.HTTP_200_OK)
+        if not image_file.content_type.startswith('image/'):
+            return error_response('只支持图片文件', status_code=status.HTTP_200_OK)
+
+        _USERIMAGE_DIR = Path(__file__).resolve().parent.parent.parent / 'aipet' / 'photo_to_uv_texture' / 'UserImage'
+        _USERIMAGE_DIR.mkdir(parents=True, exist_ok=True)
+
+        suffix = Path(image_file.name).suffix or '.jpg'
+        filename = f"{uuid.uuid4()}{suffix}"
+        save_path = _USERIMAGE_DIR / filename
+
+        with open(save_path, 'wb') as f:
+            for chunk in image_file.chunks():
+                f.write(chunk)
+
+        result = generate_eye_uv_texture(str(save_path))
+
+        # 把 recolored_path 本地绝对路径转为可访问的 URL
+        # nginx 映射：/eye_uv_images/ -> aipet/photo_to_uv_texture/output/
+        for item in result.get("recolored_results", []):
+            if item.get("ok") and item.get("recolored_path"):
+                relative = item["recolored_path"].replace("\\", "/").split("output/")[-1]
+                item["recolored_url"] = f"{settings.MESHY_SERVER_URL}/eye_uv_images/{relative}"
+
+        return success_response(result, message='生成成功')

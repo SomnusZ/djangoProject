@@ -171,6 +171,7 @@
       <button class="tab-btn" data-tab="update">修改<span class="tab-sub">PUT updateUserTask</span></button>
       <button class="tab-btn" data-tab="list">列表<span class="tab-sub">GET dirUserTaskListByUser</span></button>
       <button class="tab-btn poll-tab" data-tab="poll">轮询<span class="tab-sub">GET queryMeshyTask</span></button>
+      <button class="tab-btn" data-tab="eye">眼球UV<span class="tab-sub">POST generateEyeUvTexture</span></button>
     </nav>
 
     <!-- ===== 创建（含图片上传 + 自动跳转轮询）===== -->
@@ -359,6 +360,44 @@
       </div>
     </div>
 
+    <!-- ===== 眼球 UV 贴图生成 ===== -->
+    <div class="panel" id="panel-eye">
+      <div class="grid">
+        <div class="card">
+          <h2>生成眼球 UV 贴图</h2>
+          <p class="card-meta">POST /api/models/generateEyeUvTexture/ · multipart/form-data</p>
+          <p class="hint">上传猫咪图片，后端提取眼睛特征并生成眼球 UV 贴图，返回生成结果路径。</p>
+          <form id="form-eye" enctype="multipart/form-data">
+            <label>猫咪图片（≤5MB，支持 jpg / png）
+              <div class="upload-zone" id="eye-upload-zone">
+                <input type="file" name="image" accept="image/*" id="eye-image-input" required />
+                <div class="upload-icon">👁️</div>
+                <div class="upload-label">点击选择或 <strong>拖拽</strong> 图片到此处</div>
+              </div>
+              <div class="upload-preview" id="eye-upload-preview">
+                <img id="eye-preview-img" src="" alt="预览" />
+                <div class="upload-name" id="eye-preview-name"></div>
+              </div>
+            </label>
+            <div class="status" id="status-eye">准备提交</div>
+            <div class="actions">
+              <button type="submit" id="btn-eye-submit">执行</button>
+              <button type="button" class="ghost" data-reset="eye">清空</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>测试结果</h2>
+          <div class="meta">
+            <div class="section-label">服务器响应</div>
+            <div>HTTP 状态：<code id="eye-metaStatus">-</code></div>
+            <div>Content-Type：<code id="eye-metaType">-</code></div>
+          </div>
+          <pre id="result-eye">等待提交...</pre>
+        </div>
+      </div>
+    </div>
+
   </div><!-- /shell -->
 
   <script>
@@ -411,6 +450,9 @@
         if (k === "create") {
           $("upload-preview").style.display = "none";
           $("create-poll-hint").style.display = "none";
+        }
+        if (k === "eye") {
+          $("eye-upload-preview").style.display = "none";
         }
       });
     });
@@ -630,6 +672,52 @@
     $("form-poll").addEventListener("submit", e => { e.preventDefault(); startPolling(); });
     $("btn-poll-stop").addEventListener("click", () => { stopPolling(); setStatus("poll","已手动停止"); });
     $("btn-poll-once").addEventListener("click", doPollOnce);
+
+    /* ── 眼球 UV 贴图生成 ── */
+    $("eye-image-input").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      $("eye-upload-preview").style.display = "block";
+      $("eye-preview-img").src = URL.createObjectURL(file);
+      $("eye-preview-name").textContent = `${file.name}  (${(file.size/1024).toFixed(1)} KB)`;
+    });
+    const eyeZone = $("eye-upload-zone");
+    eyeZone.addEventListener("dragover", e => { e.preventDefault(); eyeZone.classList.add("drag"); });
+    eyeZone.addEventListener("dragleave", () => eyeZone.classList.remove("drag"));
+    eyeZone.addEventListener("drop", e => {
+      e.preventDefault(); eyeZone.classList.remove("drag");
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        $("eye-image-input").files = e.dataTransfer.files;
+        $("eye-image-input").dispatchEvent(new Event("change"));
+      }
+    });
+
+    $("form-eye").addEventListener("submit", async e => {
+      e.preventDefault();
+      const submit = $("btn-eye-submit");
+      submit.disabled = true;
+      setStatus("eye", "处理中，特征提取需要一些时间，请耐心等待...", "warn");
+      $("result-eye").textContent = "处理中...";
+
+      const body = new FormData();
+      body.append("image", $("eye-image-input").files[0]);
+
+      try {
+        const { res, data } = await doFetch("/api/models/generateEyeUvTexture/", {
+          method: "POST", body
+        });
+        $("eye-metaStatus").textContent = String(res.status);
+        $("eye-metaType").textContent   = res.headers.get("content-type") || "(empty)";
+        $("result-eye").textContent = JSON.stringify(data, null, 2);
+        setStatus("eye", data?.success ? "✓ 生成成功" : `失败：${data?.message || res.status}`, data?.success);
+      } catch(err) {
+        setStatus("eye", "请求失败: " + err.message, false);
+        $("result-eye").textContent = err.message;
+      } finally {
+        submit.disabled = false;
+      }
+    });
   </script>
 </body>
 </html>

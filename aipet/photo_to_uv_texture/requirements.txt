@@ -1,0 +1,11 @@
+numpy>=1.26.0
+pillow>=10.0.0
+opencv-python>=4.8.0
+transformers>=4.45.0
+
+
+
+# Feature extraction (OWLv2 + SAM 2)
+transformers
+# SAM 2 must be installed from source:
+#   pip install git+https://github.com/facebookresearch/sam2.git
