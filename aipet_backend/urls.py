@@ -49,6 +49,8 @@ urlpatterns = [
     path('api/property/', include('app.property.urls')),
     # 用户属性关联接口
     path('api/user-property/', include('app.user_property_relation.urls')),
+    # 宠物眼球UV贴图接口
+    path('api/pet-eye-uvs/', include('app.pet_eye_uv_texture.urls')),
 ]
 
 # 开发环境下提供媒体文件访问

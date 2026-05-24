@@ -60,6 +60,8 @@ INSTALLED_APPS = [
     'app.property.apps.PropertyConfig',
     # 用户属性关联应用
     'app.user_property_relation.apps.UserPropertyRelationConfig',
+    # 宠物眼球UV贴图应用
+    'app.pet_eye_uv_texture.apps.PetEyeUvTextureConfig',
 ]
 
 # 中间件

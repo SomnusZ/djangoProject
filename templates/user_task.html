@@ -171,7 +171,8 @@
       <button class="tab-btn" data-tab="update">修改<span class="tab-sub">PUT updateUserTask</span></button>
       <button class="tab-btn" data-tab="list">列表<span class="tab-sub">GET dirUserTaskListByUser</span></button>
       <button class="tab-btn poll-tab" data-tab="poll">轮询<span class="tab-sub">GET queryMeshyTask</span></button>
-      <button class="tab-btn" data-tab="eye">眼球UV<span class="tab-sub">POST generateEyeUvTexture</span></button>
+      <button class="tab-btn" data-tab="eye">眼球UV<span class="tab-sub">POST generateEyeUv</span></button>
+      <button class="tab-btn poll-tab" data-tab="eye-poll">眼球UV轮询<span class="tab-sub">GET queryEyeUv</span></button>
     </nav>
 
     <!-- ===== 创建（含图片上传 + 自动跳转轮询）===== -->
@@ -360,15 +361,15 @@
       </div>
     </div>
 
-    <!-- ===== 眼球 UV 贴图生成 ===== -->
+    <!-- ===== 眼球 UV 贴图生成（异步上传）===== -->
     <div class="panel" id="panel-eye">
       <div class="grid">
         <div class="card">
-          <h2>生成眼球 UV 贴图</h2>
-          <p class="card-meta">POST /api/models/generateEyeUvTexture/ · multipart/form-data</p>
-          <p class="hint">上传猫咪图片，后端提取眼睛特征并生成眼球 UV 贴图，返回生成结果路径。</p>
+          <h2>上传图片 · 启动眼球UV生成</h2>
+          <p class="card-meta">POST /api/pet-eye-uvs/generateEyeUv/ · multipart/form-data</p>
+          <p class="hint">上传猫咪图片，后端立即返回 pet_eye_uv_id，AI 推理在后台执行，前端切换到「眼球UV轮询」查看进度。</p>
           <form id="form-eye" enctype="multipart/form-data">
-            <label>猫咪图片（≤5MB，支持 jpg / png）
+            <label>猫咪图片(≤5MB，支持 jpg / png)
               <div class="upload-zone" id="eye-upload-zone">
                 <input type="file" name="image" accept="image/*" id="eye-image-input" required />
                 <div class="upload-icon">👁️</div>
@@ -394,6 +395,63 @@
             <div>Content-Type：<code id="eye-metaType">-</code></div>
           </div>
           <pre id="result-eye">等待提交...</pre>
+          <div style="margin-top:12px; display:none;" id="eye-poll-hint">
+            <div class="info-note">✅ 上传成功，pet_eye_uv_id 已自动填入「眼球UV轮询」页签，点击切换查看进度。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 眼球UV 轮询 ===== -->
+    <div class="panel" id="panel-eye-poll">
+      <div class="grid">
+        <div class="card">
+          <h2>轮询眼球UV生成状态</h2>
+          <p class="card-meta">GET /api/pet-eye-uvs/queryEyeUv/ · 每 5 秒自动刷新</p>
+          <form id="form-eye-poll">
+            <label>pet_eye_uv_id(UUID 字符串)
+              <span class="field"><input type="text" name="pet_eye_uv_id" id="eye-poll-id" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" required /></span>
+            </label>
+            <div class="info-note">ℹ️ 点击「开始轮询」后每 5 秒自动查询一次，直到状态变为终态(generate_success / generate_fail)或手动停止。</div>
+            <div class="status" id="status-eye-poll">准备轮询</div>
+            <div class="actions">
+              <button type="submit" class="btn-poll" id="btn-eye-poll-start">开始轮询</button>
+              <button type="button" class="btn-stop" id="btn-eye-poll-stop">停止</button>
+              <button type="button" class="ghost" id="btn-eye-poll-once">查询一次</button>
+            </div>
+          </form>
+        </div>
+        <div class="card">
+          <h2>工作流状态</h2>
+          <div class="wf-status-bar" id="eye-wf-status-bar">
+            <div class="wf-label">当前状态</div>
+            <div id="eye-wf-badge-wrap"></div>
+            <div class="poll-counter" id="eye-poll-counter"></div>
+          </div>
+          <div class="meta">
+            <div class="section-label">最新响应</div>
+            <div>HTTP 状态：<code id="eye-poll-metaStatus">-</code></div>
+            <div>查询次数：<code id="eye-poll-count">0</code></div>
+          </div>
+          <pre id="result-eye-poll">等待轮询...</pre>
+          <!-- 成功后展示的贴图预览 -->
+          <div id="eye-result-images" style="display:none; margin-top:12px;">
+            <div class="section-label" style="margin-bottom:8px;">生成的眼球 UV 贴图</div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+              <div id="eye-result-item-0" style="display:none;">
+                <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">眼球 0</div>
+                <a id="eye-link-0" target="_blank" rel="noopener">
+                  <img id="eye-img-0" style="max-width:160px; border-radius:8px; border:1px solid var(--card-border);" />
+                </a>
+              </div>
+              <div id="eye-result-item-1" style="display:none;">
+                <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">眼球 1</div>
+                <a id="eye-link-1" target="_blank" rel="noopener">
+                  <img id="eye-img-1" style="max-width:160px; border-radius:8px; border:1px solid var(--card-border);" />
+                </a>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -453,6 +511,7 @@
         }
         if (k === "eye") {
           $("eye-upload-preview").style.display = "none";
+          $("eye-poll-hint").style.display = "none";
         }
       });
     });
@@ -697,20 +756,31 @@
       e.preventDefault();
       const submit = $("btn-eye-submit");
       submit.disabled = true;
-      setStatus("eye", "处理中，特征提取需要一些时间，请耐心等待...", "warn");
-      $("result-eye").textContent = "处理中...";
+      setStatus("eye", "上传中...", "warn");
+      $("result-eye").textContent = "上传中...";
+      $("eye-poll-hint").style.display = "none";
 
       const body = new FormData();
       body.append("image", $("eye-image-input").files[0]);
 
       try {
-        const { res, data } = await doFetch("/api/models/generateEyeUvTexture/", {
+        const { res, data } = await doFetch("/api/pet-eye-uvs/generateEyeUv/", {
           method: "POST", body
         });
         $("eye-metaStatus").textContent = String(res.status);
         $("eye-metaType").textContent   = res.headers.get("content-type") || "(empty)";
         $("result-eye").textContent = JSON.stringify(data, null, 2);
-        setStatus("eye", data?.success ? "✓ 生成成功" : `失败：${data?.message || res.status}`, data?.success);
+
+        if (data?.success) {
+          const recordId = data?.data?.pet_eye_uv_id || "";
+          setStatus("eye", `✓ 上传成功  pet_eye_uv_id: ${recordId}`, true);
+          if (recordId) {
+            $("eye-poll-id").value = recordId;
+            $("eye-poll-hint").style.display = "block";
+          }
+        } else {
+          setStatus("eye", `失败：${data?.message || res.status}`, false);
+        }
       } catch(err) {
         setStatus("eye", "请求失败: " + err.message, false);
         $("result-eye").textContent = err.message;
@@ -718,6 +788,118 @@
         submit.disabled = false;
       }
     });
+
+    /* ── 眼球UV 轮询 ── */
+    const EYE_WF_LABEL = {
+      upload_success:   { text:'已上传，等待处理', cls:'wf-pending', spin:true },
+      processing:       { text:'AI 处理中',       cls:'wf-meshy',   spin:true },
+      generate_success: { text:'✅ 生成完成',     cls:'wf-done'                },
+      generate_fail:    { text:'❌ 生成失败',     cls:'wf-error'               },
+    };
+    const EYE_TERMINAL = new Set(['generate_success','generate_fail']);
+
+    let eyePollTimer = null;
+    let eyePollCount = 0;
+
+    function renderEyeWfBadge(status) {
+      const cfg = EYE_WF_LABEL[status] || { text: status, cls:'wf-pending' };
+      $("eye-wf-badge-wrap").innerHTML =
+        `<span class="wf-badge ${cfg.cls}">
+           <span class="wf-dot${cfg.spin?' spin':''}"></span>${cfg.text}
+         </span>`;
+      $("eye-wf-status-bar").classList.add("show");
+    }
+
+    function renderEyeResultImages(data) {
+      const url0 = data?.eye_uv_url_0 || "";
+      const url1 = data?.eye_uv_url_1 || "";
+      const wrap = $("eye-result-images");
+      if (!url0 && !url1) { wrap.style.display = "none"; return; }
+      wrap.style.display = "block";
+      if (url0) {
+        $("eye-result-item-0").style.display = "block";
+        $("eye-img-0").src = url0;
+        $("eye-link-0").href = url0;
+      } else {
+        $("eye-result-item-0").style.display = "none";
+      }
+      if (url1) {
+        $("eye-result-item-1").style.display = "block";
+        $("eye-img-1").src = url1;
+        $("eye-link-1").href = url1;
+      } else {
+        $("eye-result-item-1").style.display = "none";
+      }
+    }
+
+    async function doEyePollOnce() {
+      const recordId = $("eye-poll-id").value.trim();
+      if (!recordId) { setStatus("eye-poll","请填写 pet_eye_uv_id", false); return false; }
+
+      const params  = new URLSearchParams({ pet_eye_uv_id: recordId });
+
+      try {
+        const { res, data } = await doFetch("/api/pet-eye-uvs/queryEyeUv/?" + params, { method:"GET" });
+        eyePollCount++;
+        $("eye-poll-count").textContent = String(eyePollCount);
+        $("eye-poll-metaStatus").textContent = String(res.status);
+        $("result-eye-poll").textContent = JSON.stringify(data, null, 2);
+
+        const wfStatus = data?.data?.workflow_status || "";
+        if (wfStatus) renderEyeWfBadge(wfStatus);
+
+        if (wfStatus === "generate_success") {
+          renderEyeResultImages(data?.data);
+        } else {
+          $("eye-result-images").style.display = "none";
+        }
+
+        if (EYE_TERMINAL.has(wfStatus)) {
+          stopEyePolling();
+          const ok = wfStatus === "generate_success";
+          setStatus("eye-poll", ok ? "✅ 生成完成！" : `生成失败：${data?.data?.workflow_error || "未知错误"}`, ok ? true : false);
+          return false;
+        }
+
+        setStatus("eye-poll", `轮询中... 第 ${eyePollCount} 次，状态：${wfStatus || "-"}`, "warn");
+        $("eye-poll-counter").textContent = `已查询 ${eyePollCount} 次`;
+        return true;
+      } catch(err) {
+        setStatus("eye-poll","请求失败: "+err.message, false);
+        $("result-eye-poll").textContent = err.message;
+        return false;
+      }
+    }
+
+    function stopEyePolling() {
+      if (eyePollTimer) { clearInterval(eyePollTimer); eyePollTimer = null; }
+      $("btn-eye-poll-start").style.display = "inline-flex";
+      $("btn-eye-poll-stop").style.display  = "none";
+      $("btn-eye-poll-once").disabled = false;
+    }
+
+    function startEyePolling() {
+      if (eyePollTimer) return;
+      eyePollCount = 0;
+      $("eye-poll-count").textContent = "0";
+      $("btn-eye-poll-start").style.display = "none";
+      $("btn-eye-poll-stop").style.display  = "inline-block";
+      $("btn-eye-poll-once").disabled = true;
+      setStatus("eye-poll","已启动轮询（每 5 秒）", "warn");
+
+      doEyePollOnce().then(cont => {
+        if (cont) {
+          eyePollTimer = setInterval(async () => {
+            const cont = await doEyePollOnce();
+            if (!cont) stopEyePolling();
+          }, 5000);
+        }
+      });
+    }
+
+    $("form-eye-poll").addEventListener("submit", e => { e.preventDefault(); startEyePolling(); });
+    $("btn-eye-poll-stop").addEventListener("click", () => { stopEyePolling(); setStatus("eye-poll","已手动停止"); });
+    $("btn-eye-poll-once").addEventListener("click", doEyePollOnce);
   </script>
 </body>
 </html>
